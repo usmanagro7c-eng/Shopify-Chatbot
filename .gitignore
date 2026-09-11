@@ -1,0 +1,13 @@
+node_modules/
+dist/
+logs/
+.env
+.env.local
+.env*.local
+.DS_Store
+.vercel/
+
+# Runtime RAG index — generated at build time by src/knowledge/build.ts
+# but committed for deterministic Vercel deploys (see docs/adr/001-portfolio-rag.md).
+# Comment out the next line to auto-refresh instead of committing.
+# data/knowledge.json

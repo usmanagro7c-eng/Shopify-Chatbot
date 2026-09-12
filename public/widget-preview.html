@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habibi Arts & Crafts — AI Chatbot Live Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="chat-widget.css">
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --card-bg: #ffffff;
+      --text: #221812;
+      --text-muted: #726356;
+      --gold: #c49a2c;
+      --gold-light: rgba(196, 154, 44, 0.12);
+      --border: #e8ded0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 680px;
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 32px;
+      box-shadow: 0 12px 36px -4px rgba(34, 24, 18, 0.08);
+      text-align: center;
+      position: relative;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--gold-light);
+      color: #947118;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 99px;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px;
+      color: #1a120c;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin: 0 0 24px;
+    }
+
+    .controls-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 9px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(196, 154, 44, 0.15);
+    }
+
+    .btn.primary {
+      background: var(--gold);
+      color: #17110c;
+      border-color: var(--gold);
+    }
+
+    .btn.primary:hover {
+      background: #b0871d;
+      color: #ffffff;
+    }
+
+    .test-queries {
+      background: #faf7f2;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: left;
+    }
+
+    .test-queries h3 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+
+    .query-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip-btn {
+      font-family: inherit;
+      font-size: 12.5px;
+      padding: 6px 13px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .chip-btn:hover {
+      border-color: var(--gold);
+      background: var(--gold-light);
+      color: #947118;
+    }
+
+    .footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 600px) {
+      .container { padding: 24px 18px; }
+      h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">✨ Live UI Preview</div>
+    <h1>Habibi Arts & Crafts Assistant</h1>
+    <p class="subtitle">Experience our modern, responsive, and luxury AI Chat Widget. Click the bottom launcher to test.</p>
+
+    <div class="controls-grid">
+      <button class="btn primary" onclick="AIChatbot.open()">💬 Open Widget</button>
+      <button class="btn" onclick="toggleTheme()">🌓 Switch Theme (<span id="themeLabel">Light</span>)</button>
+      <button class="btn" onclick="togglePosition()">📍 Switch Position (<span id="posLabel">Bottom-Right</span>)</button>
+      <button class="btn" onclick="AIChatbot.clearHistory()">🧹 Clear Conversation</button>
+    </div>
+
+    <div class="test-queries">
+      <h3>Quick Test Messages</h3>
+      <div class="query-chips">
+        <button class="chip-btn" onclick="sendSample('Products dikhao')">🛍️ "Products dikhao"</button>
+        <button class="chip-btn" onclick="sendSample('Mera order track karo #1001')">📦 "Mera order track karo #1001"</button>
+        <button class="chip-btn" onclick="sendSample('Custom Islamic calligraphy frame mil sakta hai?')">🎨 "Custom calligraphy frames"</button>
+        <button class="chip-btn" onclick="sendSample('Delivery charges aur time kya hai?')">🚚 "Delivery charges aur time"</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      Connected to API • Desktop, Tablet & Mobile Responsive
+    </div>
+  </div>
+
+  <script src="chat-widget.js"></script>
+  <script>
+    let currentTheme = 'light';
+    let currentPosition = 'bottom-right';
+
+    function initPreview() {
+      if (window.AIChatbot) {
+        AIChatbot.init({
+          apiUrl: 'https://variety-snooze-salaried.ngrok-free.dev',
+          title: 'Habibi Arts & Crafts',
+          subtitle: 'Online • Shopping & Support',
+          placeholder: 'Prints, custom calligraphy, ya order status...',
+          position: currentPosition,
+          theme: currentTheme,
+          strategyType: 'ecommerce',
+          enableTeaser: true,
+          teaserMessage: '👋 Assalam-o-Alaikum! Looking for custom Islamic art or need order tracking?'
+        });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPreview);
+    } else {
+      initPreview();
+    }
+
+    function toggleTheme() {
+      currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+      document.getElementById('themeLabel').textContent = currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1);
+      const widget = document.getElementById('ai-chatbot-widget');
+      if (widget) {
+        widget.classList.toggle('light', currentTheme === 'light');
+        widget.classList.toggle('dark', currentTheme === 'dark');
+      }
+    }
+
+    function togglePosition() {
+      currentPosition = currentPosition === 'bottom-right' ? 'bottom-left' : 'bottom-right';
+      document.getElementById('posLabel').textContent = currentPosition === 'bottom-right' ? 'Bottom-Right' : 'Bottom-Left';
+      const widget = document.getElementById('ai-chatbot-widget');
+      const fab = document.getElementById('ai-chatbot-fab');
+      const teaser = document.querySelector('.ai-chatbot-teaser');
+      
+      if (widget) {
+        widget.classList.toggle('bottom-right', currentPosition === 'bottom-right');
+        widget.classList.toggle('bottom-left', currentPosition === 'bottom-left');
+      }
+      if (fab) {
+        fab.classList.toggle('bottom-right', currentPosition === 'bottom-right');
+        fab.classList.toggle('bottom-left', currentPosition === 'bottom-left');
+      }
+      if (teaser) {
+        teaser.classList.toggle('bottom-right', currentPosition === 'bottom-right');
+        teaser.classList.toggle('bottom-left', currentPosition === 'bottom-left');
+      }
+    }
+
+    function sendSample(text) {
+      if (!window.AIChatbot) return;
+      AIChatbot.open();
+      const input = document.querySelector('.ai-chatbot-input-row input');
+      const form = document.querySelector('.ai-chatbot-input-row');
+      if (input && form) {
+        input.value = text;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }
+    }
+  </script>
+</body>
+</html>

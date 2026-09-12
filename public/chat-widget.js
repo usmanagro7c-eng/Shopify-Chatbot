@@ -1,15 +1,6 @@
 /**
  * AI Chatbot - Embeddable Chat Widget
- * 
- * Usage:
- * <script src="https://your-domain.com/chat-widget.js"></script>
- * <script>
- *   AIChatbot.init({
- *     apiUrl: 'https://your-api.com',
- *     position: 'bottom-right',
- *     theme: 'light'
- *   });
- * </script>
+ * High-performance, luxury, fully responsive, modern & accessible client.
  */
 
 (function() {
@@ -19,34 +10,51 @@
   const DEFAULT_CONFIG = {
     apiUrl: window.location.origin,
     position: 'bottom-right',
-    title: 'Chat Assistant',
-    placeholder: 'Type your message...',
+    title: 'Habibi Arts & Crafts',
+    subtitle: 'Online • Instant Support',
+    placeholder: 'Prints, prices ya order ke mutabiq poochen...',
     theme: 'light',
-    width: '400px',
-    height: '500px',
-    strategyType: 'default', // NEW: Strategy type
-    userId: null, // Optional: host page can pass a stable user id (e.g. Shopify customer id) for Langfuse attribution
-    quickReplies: null, // Optional: override suggested questions (array of strings). Falls back to server strategy.
+    width: '385px',
+    height: '580px',
+    strategyType: 'ecommerce',
+    userId: null,
+    quickReplies: null,
+    enableTeaser: true,
+    teaserMessage: '👋 Assalam-o-Alaikum! Need help with products or tracking your order?',
   };
 
-  // localStorage key for the per-browser session id used to correlate Langfuse traces
   const SESSION_ID_KEY = 'ai-chatbot-session-id';
 
-  // Launcher icons (inline SVG — crisp at any size, no emoji rendering variance)
-  const ICON_OPEN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="currentColor" fill-opacity="0.18"/><path d="M17.2 2.6l1 2.4 2.4 1-2.4 1-1 2.4-1-2.4-2.4-1 2.4-1z" fill="currentColor" stroke="none"/></svg>`;
-  const ICON_CLOSE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" width="24" height="24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+  // Modern Luxury SVG Icons
+  const ICON_OPEN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none" aria-hidden="true"><path d="M16 3C9.37 3 4 7.7 4 13.5c0 2.5.98 4.8 2.65 6.64L5.2 25.5a.8.8 0 0 0 1.02 1.02l5.4-1.54C13.15 25.64 14.55 26 16 26c6.63 0 12-4.7 12-10.5S22.63 3 16 3z" fill="#18120c"/><circle cx="11" cy="14" r="1.6" fill="#ffffff"/><circle cx="16" cy="14" r="1.6" fill="#ffffff"/><circle cx="21" cy="14" r="1.6" fill="#ffffff"/><path d="M24 2.2l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1z" fill="#ffffff"/></svg>`;
 
-  // Chat widget instance
+  const ICON_CLOSE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#18120c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" width="22" height="22" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+
+  const ICON_HEADER_CLOSE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+
+  const ICON_HEADER_CLEAR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
+
+  const ICON_BOT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z" fill="currentColor" fill-opacity="0.3"/></svg>`;
+
+  const ICON_SEND = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`;
+
+  const ICON_SPINNER = `<svg class="ai-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>`;
+
+  const ICON_REFRESH = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>`;
+
+  const ICON_COPY = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+
+  const ICON_CHECK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="12" height="12" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+  const ICON_ARROW_DOWN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
+
+  const ICON_SPARKLE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="13" height="13" aria-hidden="true"><path d="m12 1 2.5 6.5L21 10l-5 4.5 1.5 7L12 18l-5.5 3.5 1.5-7L3 10l6.5-2.5L12 1z"/></svg>`;
+
   let chatWidget = null;
   let messages = [];
-  // True when chat-widget.css wasn't detected, so bubbles paint their own colors.
-  let addMessageFallback = false;
 
   /**
-   * Get or create a stable per-browser session id. Persisted in localStorage so
-   * refreshes/tab-switches stay in the same Langfuse session; regenerated only
-   * if the user clears storage. Falls back to a per-load random id in browsers
-   * where localStorage is disabled (private mode / cookie-blocked embeds).
+   * Session ID for Langfuse attribution & continuity
    */
   function getOrCreateSessionId() {
     try {
@@ -68,59 +76,43 @@
   }
 
   /**
-   * Initialize the chat widget
+   * Initialize widget
    */
   async function init(config = {}) {
     const finalConfig = { ...DEFAULT_CONFIG, ...config };
-    
-    // Load brand fonts (Cinzel + Plus Jakarta Sans) once, so the widget matches
-    // the site's typography even when the host page doesn't ship them.
+
+    // Load fonts (Cinzel + Plus Jakarta Sans) once
     if (!document.getElementById('ai-chatbot-fonts')) {
       const fontLink = document.createElement('link');
       fontLink.id = 'ai-chatbot-fonts';
       fontLink.rel = 'stylesheet';
-      fontLink.href = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap';
+      fontLink.href = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap';
       document.head.appendChild(fontLink);
     }
 
-    // Create and inject widget
     await createWidget(finalConfig);
-    
-    console.log('[AIChatbot] Widget initialized', finalConfig);
+    console.log('[AIChatbot] Widget initialized with modern UI', finalConfig);
   }
 
   /**
-   * Create the chat widget DOM
+   * Create the chat widget DOM (instant, non-blocking)
    */
-  async function createWidget(config) {
-    // Fetch strategy greeting
-    let greeting = 'Hello! How can I help you today?';
-    let suggestedQuestions = [];
-    try {
-      const strategyResponse = await fetch(`${config.apiUrl}/api/strategy/${config.strategyType}`, {headers: { 'ngrok-skip-browser-warning': 'true' },});
-      if (strategyResponse.ok) {
-        const strategyData = await strategyResponse.json();
-        if (strategyData.success && strategyData.data.greeting) {
-          greeting = strategyData.data.greeting;
-        }
-        if (Array.isArray(strategyData.data.suggestedQuestions)) {
-          suggestedQuestions = strategyData.data.suggestedQuestions.filter((q) => typeof q === 'string' && q.trim());
-        }
-      }
-    } catch (error) {
-      console.warn('[AIChatbot] Could not fetch strategy greeting, using default');
-    }
+  function createWidget(config) {
+    let greeting = 'Assalam-o-Alaikum! Main Habibi Arts & Crafts assistant hoon. Main aap ki kya madad kar sakta hoon?';
+    let suggestedQuestions = Array.isArray(config.quickReplies) && config.quickReplies.length > 0 
+      ? config.quickReplies 
+      : [
+          '🛍️ Products dikhao',
+          '📦 Mera order track karo',
+          '🎨 Custom Calligraphy Frames',
+          '🚚 Delivery time & charges'
+        ];
 
-    // Owner override via AIChatbot.init({ quickReplies: [...] })
-    if (Array.isArray(config.quickReplies)) {
-      suggestedQuestions = config.quickReplies.filter((q) => typeof q === 'string' && q.trim());
-    }
-
-    // Create launcher button (always visible — chat window opens on click)
+    // 1. Floating Action Button (FAB)
     const fab = document.createElement('button');
     fab.id = 'ai-chatbot-fab';
     fab.className = config.position;
-    fab.setAttribute('aria-label', 'Open chat');
+    fab.setAttribute('aria-label', 'Open chat assistance');
     fab.setAttribute('aria-expanded', 'false');
 
     const iconOpen = document.createElement('span');
@@ -138,145 +130,184 @@
     fabBadge.className = 'ai-chatbot-fab-badge';
     fabBadge.style.display = 'none';
     fab.appendChild(fabBadge);
-    fabBadge.onclick = () => { fabBadge.style.display = 'none'; };
 
     fab.onclick = () => toggleWidget();
 
-    // Create container
+    // 2. Proactive Teaser Balloon
+    let teaserEl = null;
+    const isDismissed = sessionStorage.getItem('ai-teaser-dismissed');
+    if (config.enableTeaser && !isDismissed && localStorage.getItem('ai-chatbot-state') !== 'open') {
+      teaserEl = document.createElement('div');
+      teaserEl.className = `ai-chatbot-teaser ${config.position}`;
+      teaserEl.innerHTML = `
+        <span>${escapeHtml(config.teaserMessage)}</span>
+        <button type="button" class="ai-teaser-close" aria-label="Dismiss">&times;</button>
+      `;
+
+      teaserEl.onclick = (e) => {
+        if (e.target.closest('.ai-teaser-close')) {
+          e.stopPropagation();
+          dismissTeaser();
+          return;
+        }
+        dismissTeaser();
+        openWidget();
+      };
+
+      // Delay showing teaser slightly for natural feel
+      setTimeout(() => {
+        if (!chatWidget || chatWidget.isOpen) return;
+        document.body.appendChild(teaserEl);
+      }, 1400);
+    }
+
+    function dismissTeaser() {
+      if (teaserEl) {
+        sessionStorage.setItem('ai-teaser-dismissed', 'true');
+        teaserEl.remove();
+        teaserEl = null;
+      }
+    }
+
+    // 3. Widget Container
     const container = document.createElement('div');
     container.id = 'ai-chatbot-widget';
     container.className = `ai-chatbot ${config.position} ${config.theme}`;
-    container.style.cssText = `
-      position: fixed;
-      ${config.position.includes('right') ? 'right' : 'left'}: 20px;
-      ${config.position.includes('bottom') ? 'bottom' : 'top'}: 88px;
-      width: ${config.width};
-      height: ${config.height};
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      display: flex;
-      flex-direction: column;
-      font-family: 'Plus Jakarta Sans', 'Assistant', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-      z-index: 999999;
-    `;
+    container.style.width = config.width;
+    container.style.height = config.height;
 
-    // Header
+    // 4. Header Component
     const header = document.createElement('div');
     header.className = 'ai-chatbot-header';
-    header.style.cssText = `
-      padding: 10px 14px;
-      border-radius: 12px 12px 0 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    `;
 
-    const title = document.createElement('h3');
-    title.textContent = config.title;
-    title.style.cssText = 'margin: 0; font-size: 14px; font-weight: 600; font-family: \'Cinzel\', serif; letter-spacing: 0.02em;';
+    const headerInfo = document.createElement('div');
+    headerInfo.className = 'ai-header-info';
+
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'ai-header-avatar-wrap';
+    const avatar = document.createElement('div');
+    avatar.className = 'ai-header-avatar';
+    avatar.innerHTML = ICON_BOT;
+    const onlineDot = document.createElement('div');
+    onlineDot.className = 'ai-online-indicator';
+    avatarWrap.appendChild(avatar);
+    avatarWrap.appendChild(onlineDot);
+
+    const textGroup = document.createElement('div');
+    textGroup.className = 'ai-header-text-group';
+    const titleEl = document.createElement('h3');
+    titleEl.className = 'ai-header-title';
+    titleEl.textContent = config.title;
+    const subtitleEl = document.createElement('div');
+    subtitleEl.className = 'ai-header-subtitle';
+    subtitleEl.textContent = config.subtitle || 'Online • Instant Shopping Assistant';
+    textGroup.appendChild(titleEl);
+    textGroup.appendChild(subtitleEl);
+
+    headerInfo.appendChild(avatarWrap);
+    headerInfo.appendChild(textGroup);
+
+    const headerActions = document.createElement('div');
+    headerActions.className = 'ai-header-actions';
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'ai-header-btn ai-header-btn-clear';
+    resetBtn.setAttribute('title', 'Clear Chat');
+    resetBtn.setAttribute('aria-label', 'Clear Chat');
+    resetBtn.innerHTML = ICON_HEADER_CLEAR;
+    resetBtn.onclick = () => {
+      if (confirm('Are you sure you want to clear this conversation?')) {
+        clearHistory();
+      }
+    };
 
     const closeBtn = document.createElement('button');
-    closeBtn.textContent = '×';
-    closeBtn.style.cssText = `
-      background: none;
-      border: none;
-      font-size: 20px;
-      cursor: pointer;
-      padding: 0;
-      width: 26px;
-      height: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    closeBtn.type = 'button';
+    closeBtn.className = 'ai-header-btn ai-header-btn-close';
+    closeBtn.setAttribute('title', 'Close Chat');
+    closeBtn.setAttribute('aria-label', 'Close Chat');
+    closeBtn.innerHTML = ICON_HEADER_CLOSE;
     closeBtn.onclick = () => toggleWidget();
 
-    header.appendChild(title);
-    header.appendChild(closeBtn);
+    headerActions.appendChild(resetBtn);
+    headerActions.appendChild(closeBtn);
 
-    // Messages container
+    header.appendChild(headerInfo);
+    header.appendChild(headerActions);
+
+    // 5. Messages Container
     const messagesContainer = document.createElement('div');
     messagesContainer.className = 'ai-chatbot-messages';
-    messagesContainer.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    `;
 
-    // "Jump to latest" pill — pinned while scrolled up, click scrolls to bottom.
+    // Jump to latest button
     const jumpBtn = document.createElement('button');
     jumpBtn.type = 'button';
     jumpBtn.className = 'ai-chatbot-scroll-btn';
-    jumpBtn.textContent = '\u2193';
+    jumpBtn.innerHTML = ICON_ARROW_DOWN;
     jumpBtn.setAttribute('aria-label', 'Scroll to latest message');
     jumpBtn.addEventListener('click', () => smartScrollToBottom(true));
     messagesContainer.appendChild(jumpBtn);
 
     messagesContainer.addEventListener('scroll', () => {
       if (!chatWidget || !chatWidget.isOpen) return;
-      const nearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 80;
+      const nearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 70;
       jumpBtn.classList.toggle('visible', !nearBottom);
     });
 
-    // Input form
+    // 6. Input Form Area
+    const formContainer = document.createElement('div');
+    formContainer.className = 'ai-chatbot-form-container';
+
     const form = document.createElement('form');
-    form.style.cssText = `
-      padding: 12px;
-      display: flex;
-      gap: 8px;
-    `;
+    form.className = 'ai-chatbot-input-row';
 
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = config.placeholder;
-    input.style.cssText = `
-      flex: 1;
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 14px;
-      font-family: inherit;
-    `;
+    input.setAttribute('aria-label', 'Type your message');
+    input.autocomplete = 'off';
 
     const sendBtn = document.createElement('button');
     sendBtn.type = 'submit';
-    sendBtn.textContent = 'Send';
-    sendBtn.style.cssText = `
-      border: none;
-      border-radius: 6px;
-      padding: 8px 16px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-    `;
+    sendBtn.className = 'ai-chatbot-send-btn';
+    sendBtn.innerHTML = ICON_SEND;
+    sendBtn.setAttribute('aria-label', 'Send message');
+    sendBtn.disabled = true;
+
+    input.addEventListener('input', () => {
+      sendBtn.disabled = !input.value.trim();
+    });
 
     form.appendChild(input);
     form.appendChild(sendBtn);
 
-    // Shared send path: quick-reply chips and the form both funnel here.
+    const footerNote = document.createElement('div');
+    footerNote.className = 'ai-chatbot-footer-note';
+    footerNote.innerHTML = '⚡ Powered by AI Assistant';
+
+    formContainer.appendChild(form);
+    formContainer.appendChild(footerNote);
+
+    // Send logic
     const sendMessage = async (text) => {
       const message = String(text || '').trim();
       if (!message) return;
 
-      // Hide quick-reply chips after the first user turn
       if (chatWidget && chatWidget.chipsEl) {
         chatWidget.chipsEl.remove();
         chatWidget.chipsEl = null;
       }
 
-      // Add user message
       addMessage('user', message);
       input.value = '';
+      sendBtn.disabled = true;
       showTyping();
 
-      // Send to API
       try {
+        sendBtn.innerHTML = ICON_SPINNER;
         sendBtn.disabled = true;
-        // Compact prior turns into the shape the OpenAI messages array expects.
-        // We exclude the message the user just typed (server appends it) and any
-        // 'error' rows (those are widget-side render markers, not real assistant turns).
+
         const conversationHistory = messages
           .filter((m) => m.role === 'user' || m.role === 'assistant')
           .slice(0, -1)
@@ -300,26 +331,24 @@
         });
 
         if (!response.ok) {
-          throw new Error(`API error: ${response.statusText}`);
+          throw new Error(`API response error (${response.status})`);
         }
 
         const data = await response.json();
-        
-        // Handle API response format
+
+        hideTyping();
         if (data.success && data.data) {
-          hideTyping();
           addMessage('assistant', data.data.message, { products: data.data.products });
-          // Notify the visitor when a reply lands while the window is closed
           if (!chatWidget.isOpen) setUnread(chatWidget.unreadCount + 1);
         } else {
-          hideTyping();
-          addMessage('assistant', 'I could not generate a response.');
+          addMessage('assistant', 'Sorry, could not generate a response. Please try again.');
         }
       } catch (error) {
         hideTyping();
-        addMessage('error', `Error: ${error.message}`);
+        addMessage('error', `Connection error: ${error.message}`);
       } finally {
-        sendBtn.disabled = false;
+        sendBtn.innerHTML = ICON_SEND;
+        sendBtn.disabled = !input.value.trim();
       }
     };
 
@@ -328,52 +357,14 @@
       sendMessage(input.value);
     };
 
-    // Assemble widget
+    // Assemble DOM
     container.appendChild(header);
     container.appendChild(messagesContainer);
-    container.appendChild(form);
+    container.appendChild(formContainer);
 
-    // Inject into DOM
     document.body.appendChild(fab);
     document.body.appendChild(container);
 
-    // If chat-widget.css isn't loaded/effective on the host page, the container
-    // stays transparent and the website shows through. Paint the core surfaces
-    // inline (theme-aware) as a fallback so the window is always opaque.
-    const THEME_FALLBACK = {
-      light: {
-        containerBg: '#fcfaf5', text: '#1e1613',
-        headerBg: 'linear-gradient(135deg, #261d18 0%, #1e1613 100%)', headerText: '#faf6ee',
-        userBg: '#1e1613', userText: '#faf6ee',
-        sendBg: '#d4af37', sendText: '#1e1613',
-      },
-      dark: {
-        containerBg: '#1a1612', text: '#f8f3ea',
-        headerBg: 'linear-gradient(135deg, #261d18 0%, #1e1613 100%)', headerText: '#faf6ee',
-        userBg: '#d4af37', userText: '#1e1613',
-        sendBg: '#d4af37', sendText: '#1e1613',
-      },
-    };
-
-    const computedBg = getComputedStyle(container).backgroundColor;
-    const cssMissing = !computedBg || computedBg === 'transparent' || computedBg === 'rgba(0, 0, 0, 0)';
-    if (cssMissing) {
-      const fb = THEME_FALLBACK[config.theme] || THEME_FALLBACK.light;
-      container.style.backgroundColor = fb.containerBg;
-      container.style.color = fb.text;
-      header.style.background = fb.headerBg;
-      header.style.color = fb.headerText;
-      closeBtn.style.color = fb.headerText;
-      input.style.backgroundColor = config.theme === 'dark' ? '#221b15' : '#fffdf8';
-      sendBtn.style.backgroundColor = fb.sendBg;
-      sendBtn.style.color = fb.sendText;
-      fab.style.background = 'linear-gradient(135deg, #3a2d22 0%, #1e1613 100%)';
-      fab.style.color = '#d4af37';
-      addMessageFallback = true;
-      console.warn('[AIChatbot] chat-widget.css not detected — applied inline fallback styles');
-    }
-
-    // Store references
     chatWidget = {
       container,
       messagesContainer,
@@ -383,51 +374,62 @@
       fab,
       fabBadge,
       jumpBtn,
+      dismissTeaser,
       chipsEl: null,
       isOpen: false,
       unreadCount: 0,
       sessionId: getOrCreateSessionId(),
     };
 
-    // Launcher-first: the chat window starts closed and the launcher stays
-    // visible. Respect a persisted "open" state from a previous visit.
+    // Check saved state
     if (localStorage.getItem('ai-chatbot-state') === 'open') {
       openWidget();
     } else {
       container.style.display = 'none';
     }
 
-    // Add initial message from strategy
+    // Initial greeting
     addMessage('assistant', greeting);
 
-    // Quick-reply chips (from server strategy or config override)
+    // Quick-reply suggestions
     if (suggestedQuestions.length > 0) {
-      const chipsRow = document.createElement('div');
-      chipsRow.className = 'ai-chatbot-quick-replies';
-      for (const q of suggestedQuestions) {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'ai-chatbot-chip';
-        chip.textContent = q;
-        chip.setAttribute('aria-label', q);
-        chip.addEventListener('click', () => sendMessage(q));
-        chipsRow.appendChild(chip);
-      }
-      chatWidget.chipsEl = chipsRow;
-      chatWidget.messagesContainer.appendChild(chipsRow);
+      renderQuickReplies(suggestedQuestions, sendMessage);
     }
+  }
+
+  function renderQuickReplies(questions, onSend) {
+    if (!chatWidget) return;
+    const chipsRow = document.createElement('div');
+    chipsRow.className = 'ai-chatbot-quick-replies';
+
+    for (const q of questions) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'ai-chatbot-chip';
+      chip.innerHTML = `<span class="ai-chip-sparkle">${ICON_SPARKLE}</span><span>${escapeHtml(q)}</span>`;
+      chip.setAttribute('aria-label', q);
+      chip.addEventListener('click', () => onSend(q));
+      chipsRow.appendChild(chip);
+    }
+
+    chatWidget.chipsEl = chipsRow;
+    chatWidget.messagesContainer.appendChild(chipsRow);
   }
 
   const MIN_TYPING_MS = 400;
 
-  /**
-   * Show the "typing…" dots (assistant bubble style). No-op if one is already shown.
-   */
   function showTyping() {
     if (!chatWidget || chatWidget.typingEl) return;
 
     const wrapper = document.createElement('div');
     wrapper.className = 'ai-chatbot-message ai-chatbot-assistant';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'ai-bot-avatar-mini';
+    avatar.innerHTML = ICON_BOT;
+
+    const contentWrap = document.createElement('div');
+    contentWrap.className = 'ai-message-content-wrap';
 
     const indicator = document.createElement('div');
     indicator.className = 'ai-typing-indicator';
@@ -435,33 +437,18 @@
     indicator.appendChild(document.createElement('span'));
     indicator.appendChild(document.createElement('span'));
     indicator.appendChild(document.createElement('span'));
-    wrapper.appendChild(indicator);
+
+    contentWrap.appendChild(indicator);
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(contentWrap);
 
     chatWidget.typingEl = wrapper;
     chatWidget.typingStartedAt = Date.now();
     chatWidget.messagesContainer.appendChild(wrapper);
 
-    if (addMessageFallback) {
-      const isDark = chatWidget.config && chatWidget.config.theme === 'dark';
-      indicator.style.backgroundColor = isDark ? '#2a201a' : '#f5efe6';
-      indicator.style.padding = '10px 14px';
-      indicator.style.borderRadius = '8px';
-      indicator.querySelectorAll('span').forEach((d) => {
-        d.style.width = '8px';
-        d.style.height = '8px';
-        d.style.backgroundColor = '#d4af37';
-        d.style.borderRadius = '50%';
-      });
-    }
-
-    chatWidget.messagesContainer.scrollTop = chatWidget.messagesContainer.scrollHeight;
     smartScrollToBottom(true);
   }
 
-  /**
-   * Remove the typing indicator, keeping it visible for at least MIN_TYPING_MS
-   * so fast responses don't make it flicker.
-   */
   function hideTyping() {
     if (!chatWidget || !chatWidget.typingEl) return;
 
@@ -477,10 +464,6 @@
     }, delay);
   }
 
-  /**
-   * Scroll to the bottom unless the visitor has scrolled up to read history.
-   * `force` (new user turn / typing / programmatic) always jumps to bottom.
-   */
   function smartScrollToBottom(force) {
     if (!chatWidget || !chatWidget.messagesContainer) return;
     const el = chatWidget.messagesContainer;
@@ -491,10 +474,6 @@
     }
   }
 
-  /**
-   * Show/hide the "N unread" badge on the launcher. Only populated while the
-   * chat window is closed; cleared on open.
-   */
   function setUnread(count) {
     if (!chatWidget || !chatWidget.fabBadge) return;
     chatWidget.unreadCount = Math.max(0, count);
@@ -511,9 +490,6 @@
     setUnread(0);
   }
 
-  /**
-   * Local 12-hour time for a message bubble, e.g. "3:04 PM".
-   */
   function formatTime(date) {
     try {
       let hours = date.getHours();
@@ -537,7 +513,6 @@
   function renderInline(text) {
     let out = escapeHtml(text);
 
-    // Tokenize markdown images/links so bare-URL auto-linking never touches them.
     const images = [];
     out = out.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g, (_, alt, url) => {
       const token = `@@AI_IMG_${images.length}@@`;
@@ -557,7 +532,7 @@
       .replace(/\*([^*\s][^*]*?)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>');
 
-    // Bare URLs (e.g. "Product Link: https://...") become clickable links.
+    // Autolink bare URLs
     out = out.replace(/https?:\/\/[^\s<>"')]+/g, (url) => {
       const punct = /[.,;:!]+$/.exec(url);
       const clean = punct ? url.slice(0, punct.index) : url;
@@ -569,6 +544,7 @@
       const img = images[Number(i)];
       return `<a class="ai-inline-image" href="${img.url}" target="_blank" rel="noopener noreferrer"><img src="${img.url}" alt="${img.alt || 'product image'}" loading="lazy"></a>`;
     });
+
     out = out.replace(/@@AI_LINK_(\d+)@@/g, (_, i) => {
       const link = links[Number(i)];
       return `<a href="${link.url}" target="_blank" rel="noopener noreferrer">${link.label}</a>`;
@@ -586,23 +562,16 @@
     return trimmed;
   }
 
-  /**
-   * Render an assistant response as safe HTML: fenced code blocks, paragraphs,
-   * bullet/numbered lists, bold/italic/inline-code/links. Input is HTML-escaped
-   * first, so only the tags generated here can appear in the output.
-   */
   function renderMessage(content) {
     const source = String(content || '');
-
-    // Pull out fenced code blocks first (they may contain list markers / blank lines).
     const codeBlocks = [];
+
     let text = source.replace(/```([\s\S]*?)```/g, (_, code) => {
       const token = `@@AI_CODE_${codeBlocks.length}@@`;
       codeBlocks.push(stripCodeLang(code));
       return token;
     });
 
-    // Group consecutive lines into paragraphs and lists.
     let html = '';
     let listType = null;
     const flushList = () => {
@@ -631,7 +600,6 @@
         flushList();
         const trimmed = line.trim();
         if (trimmed === '') continue;
-        // Standalone code-block tokens render as block <pre>, not inside a <p>.
         if (/^@@AI_CODE_\d+@@$/.test(trimmed)) {
           html += trimmed;
         } else {
@@ -641,71 +609,87 @@
     }
     flushList();
 
-    // Restore code blocks as <pre><code>.
     html = html.replace(/@@AI_CODE_(\d+)@@/g, (_, i) => `<pre><code>${escapeHtml(codeBlocks[Number(i)])}</code></pre>`);
-
     return html;
   }
 
   /**
-   * Add a message to the chat. `extra.products` renders a clickable image-card
-   * grid below the assistant message (image + title + price → product page).
+   * Add message to conversation
    */
   function addMessage(role, content, extra) {
     if (!chatWidget) return;
 
     const messageDiv = document.createElement('div');
     messageDiv.className = `ai-chatbot-message ai-chatbot-${role}`;
-    messageDiv.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      align-items: ${role === 'user' ? 'flex-end' : 'flex-start'};
-      margin-bottom: 8px;
-    `;
 
-    const messageBubble = document.createElement('div');
-    messageBubble.className = 'ai-message-bubble';
-    messageBubble.style.cssText = `
-      max-width: 75%;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 14px;
-      word-wrap: break-word;
-    `;
+    // Mini Bot Avatar for assistant
     if (role === 'assistant') {
-      messageBubble.innerHTML = renderMessage(content);
+      const botAvatar = document.createElement('div');
+      botAvatar.className = 'ai-bot-avatar-mini';
+      botAvatar.innerHTML = ICON_BOT;
+      messageDiv.appendChild(botAvatar);
+    }
+
+    const contentWrap = document.createElement('div');
+    contentWrap.className = 'ai-message-content-wrap';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'ai-message-bubble';
+
+    if (role === 'assistant') {
+      bubble.innerHTML = renderMessage(content);
     } else {
-      messageBubble.textContent = content;
+      bubble.textContent = content;
     }
 
-    if (addMessageFallback) {
-      const isDark = chatWidget.config && chatWidget.config.theme === 'dark';
-      if (role === 'error') {
-        messageBubble.style.backgroundColor = '#c26144';
-        messageBubble.style.color = '#ffffff';
-      } else if (role === 'user') {
-        messageBubble.style.backgroundColor = isDark ? '#d4af37' : '#1e1613';
-        messageBubble.style.color = isDark ? '#1e1613' : '#faf6ee';
-      } else {
-        messageBubble.style.backgroundColor = isDark ? '#2a201a' : '#f5efe6';
-        messageBubble.style.color = isDark ? '#f8f3ea' : '#1e1613';
-      }
+    contentWrap.appendChild(bubble);
+
+    // Meta bar (timestamps, copy button, status)
+    if (role === 'assistant') {
+      const actionRow = document.createElement('div');
+      actionRow.className = 'ai-bubble-actions';
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'ai-chatbot-meta';
+      timeSpan.textContent = formatTime(new Date());
+
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'ai-copy-btn';
+      copyBtn.innerHTML = `${ICON_COPY}<span>Copy</span>`;
+      copyBtn.setAttribute('aria-label', 'Copy response text');
+
+      copyBtn.onclick = () => {
+        const plainText = bubble.innerText || bubble.textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(plainText).then(() => {
+            copyBtn.classList.add('copied');
+            copyBtn.innerHTML = `${ICON_CHECK}<span>Copied!</span>`;
+            setTimeout(() => {
+              copyBtn.classList.remove('copied');
+              copyBtn.innerHTML = `${ICON_COPY}<span>Copy</span>`;
+            }, 2000);
+          });
+        }
+      };
+
+      actionRow.appendChild(timeSpan);
+      actionRow.appendChild(copyBtn);
+      contentWrap.appendChild(actionRow);
+    } else if (role === 'user') {
+      const metaSpan = document.createElement('div');
+      metaSpan.className = 'ai-chatbot-meta';
+      metaSpan.innerHTML = `<span>${formatTime(new Date())}</span><span class="ai-check-icon">${ICON_CHECK}</span>`;
+      contentWrap.appendChild(metaSpan);
     }
 
-    messageDiv.appendChild(messageBubble);
-
-    if (role === 'user' || role === 'assistant') {
-      const timeEl = document.createElement('span');
-      timeEl.className = 'ai-chatbot-msg-time';
-      timeEl.textContent = formatTime(new Date());
-      messageDiv.appendChild(timeEl);
-    }
-
+    messageDiv.appendChild(contentWrap);
     chatWidget.messagesContainer.appendChild(messageDiv);
 
+    // Render structured product cards
     if (role === 'assistant' && extra && extra.products && extra.products.length > 0) {
-      const list = document.createElement('div');
-      list.className = 'ai-chatbot-product-list';
+      const productList = document.createElement('div');
+      productList.className = 'ai-chatbot-product-list';
 
       for (const p of extra.products) {
         const hasUrl = Boolean(p.url);
@@ -719,11 +703,14 @@
         }
 
         if (p.image) {
+          const imgWrap = document.createElement('div');
+          imgWrap.className = 'ai-product-img-wrap';
           const img = document.createElement('img');
           img.src = p.image;
           img.alt = p.title || 'Product';
           img.loading = 'lazy';
-          card.appendChild(img);
+          imgWrap.appendChild(img);
+          card.appendChild(imgWrap);
         }
 
         const label = document.createElement('div');
@@ -735,78 +722,84 @@
 
         const priceEl = document.createElement('div');
         priceEl.className = 'ai-chatbot-product-card-price';
-        priceEl.textContent = `${p.currency || ''} ${p.price || ''}`.trim();
+        priceEl.textContent = `${p.currency || 'PKR'} ${p.price || ''}`.trim();
 
         label.appendChild(titleEl);
         label.appendChild(priceEl);
+
+        if (hasUrl) {
+          const actionLink = document.createElement('div');
+          actionLink.className = 'ai-product-action-link';
+          actionLink.innerHTML = `<span>View Details</span><span>&rarr;</span>`;
+          label.appendChild(actionLink);
+        }
+
         card.appendChild(label);
-        list.appendChild(card);
+        productList.appendChild(card);
       }
 
-      chatWidget.messagesContainer.appendChild(list);
+      chatWidget.messagesContainer.appendChild(productList);
     }
 
-    // Auto-scroll to bottom (skipped when the visitor has scrolled up)
     smartScrollToBottom(false);
-
-    // Store message
     messages.push({ role, content, timestamp: new Date() });
   }
 
   /**
-   * Open the widget (for mobile FAB button)
+   * Open widget
    */
   function openWidget() {
     if (!chatWidget) return;
 
     chatWidget.isOpen = true;
     clearUnread();
+    if (typeof chatWidget.dismissTeaser === 'function') {
+      chatWidget.dismissTeaser();
+    }
+
     chatWidget.container.style.display = 'flex';
-    chatWidget.container.classList.add('open'); // Add class for mobile CSS
+    chatWidget.container.classList.add('open');
     chatWidget.fab.classList.add('ai-chatbot-fab-open');
     chatWidget.fab.setAttribute('aria-expanded', 'true');
-    chatWidget.fab.setAttribute('aria-label', 'Close chat');
+    chatWidget.fab.setAttribute('aria-label', 'Close chat assistance');
     localStorage.setItem('ai-chatbot-state', 'open');
 
-    // Focus input
-    setTimeout(() => chatWidget.input.focus(), 100);
+    // Prevent body scroll on mobile
+    if (window.innerWidth <= 640) {
+      document.body.style.overflow = 'hidden';
+    }
+
+    setTimeout(() => {
+      chatWidget.input.focus();
+      smartScrollToBottom(true);
+    }, 120);
   }
 
   /**
-   * Toggle widget visibility
+   * Toggle widget
    */
   function toggleWidget() {
     if (!chatWidget) return;
 
     const isVisible = chatWidget.container.style.display !== 'none';
-    
     if (isVisible) {
-      // Close widget
       chatWidget.isOpen = false;
       chatWidget.container.style.display = 'none';
-      chatWidget.container.classList.remove('open'); // Remove class for mobile CSS
+      chatWidget.container.classList.remove('open');
       chatWidget.fab.classList.remove('ai-chatbot-fab-open');
       chatWidget.fab.setAttribute('aria-expanded', 'false');
-      chatWidget.fab.setAttribute('aria-label', 'Open chat');
+      chatWidget.fab.setAttribute('aria-label', 'Open chat assistance');
       localStorage.setItem('ai-chatbot-state', 'closed');
+      document.body.style.overflow = '';
     } else {
-      // Open widget
       openWidget();
     }
   }
 
-  /**
-   * Get conversation history
-   */
   function getHistory() {
     return messages;
   }
 
-  /**
-   * Clear chat history. Rotates the sessionId so the next turn starts a fresh
-   * Langfuse session — otherwise old + new turns coalesce into one session with
-   * a hole where the cleared messages used to be.
-   */
   function clearHistory() {
     messages = [];
     if (chatWidget) {
@@ -815,7 +808,8 @@
       } catch (_) {}
       chatWidget.sessionId = getOrCreateSessionId();
       chatWidget.messagesContainer.innerHTML = '';
-      addMessage('assistant', 'Chat cleared. How can I help?');
+      chatWidget.messagesContainer.appendChild(chatWidget.jumpBtn);
+      addMessage('assistant', 'Chat conversation cleared. How can I help you today?');
     }
   }
 
@@ -826,10 +820,9 @@
     open: openWidget,
     getHistory,
     clearHistory,
-    version: '1.0.0', // Updated for strategy pattern
+    version: '1.2.0',
   };
 
-  // Auto-initialize if data attribute is present
   document.addEventListener('DOMContentLoaded', () => {
     const scripts = document.querySelectorAll('script[data-ai-chatbot]');
     if (scripts.length > 0) {

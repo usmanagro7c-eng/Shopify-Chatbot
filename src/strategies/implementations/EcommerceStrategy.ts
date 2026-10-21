@@ -71,15 +71,15 @@ export class EcommerceStrategy extends BaseBehaviorStrategy {
 	}
 
 	getGreeting(): string {
-		return "Hello! Welcome to our store. I can help you find products, check prices, recommend art prints & items, or track your orders. What can I help you with today?";
+		return "Salam! Welcome to Flexifit Outerwear. I can help you find products, verify your size (M-2XL), answer Cash on Delivery (COD) questions, or track your orders. What can I help you with today?";
 	}
 
 	getSuggestedQuestions(): string[] {
 		return [
-			"Products dikhao",
+			"Puffer Jackets dikhao",
+			"Size guide (M-2XL)",
+			"Cash on Delivery (COD) information",
 			"Mera order track karo",
-			"Koi sale ya discount hai?",
-			"Payment kaise karun?",
 		];
 	}
 

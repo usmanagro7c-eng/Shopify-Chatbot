@@ -100,7 +100,7 @@ app.get("/", (_req, res) => {
 // POST /api/chat - Get AI response
 app.post("/api/chat", async (req, res) => {
 	try {
-		const { message, conversationHistory, strategyType, sessionId, userId } =
+		const { message, conversationHistory, strategyType, sessionId, userId, storeInfo, products: clientProducts } =
 			req.body;
 
 		if (!message) {
@@ -164,7 +164,7 @@ app.post("/api/chat", async (req, res) => {
 		if (strategy.getType() === "ecommerce") {
 			try {
 				// 1. Fetch shop info if available
-				const shopInfo = await getShopInfo();
+				const shopInfo = storeInfo || await getShopInfo();
 				if (shopInfo) {
 					contextInfo += `\n\nSTORE INFORMATION:
 - Store Name: ${shopInfo.name}
@@ -184,7 +184,7 @@ ${shopInfo.country ? `- Country: ${shopInfo.country}` : ""}`;
 
 					// Detect broad/general catalog questions or store inquiries
 					const isGeneralInquiry =
-						/what (products|items|art|prints|goods|paintings)|what do you (have|sell|offer)|show (me )?(products|items|catalog|collection|art)|all products|browse|catalog|kya (products|items|cheezain|hai|hain)|store|products\b|items\b|collection|available/i.test(
+						/what (products|items|jackets|puffer|goods|clothes|outerwear)|what do you (have|sell|offer)|show (me )?(products|items|catalog|collection|art)|all products|browse|catalog|kya (products|items|cheezain|hai|hain)|store|products\b|items\b|collection|available/i.test(
 							messageText,
 						) ||
 						messageText.includes("ya mera store hai") ||
@@ -258,7 +258,7 @@ ${shopInfo.country ? `- Country: ${shopInfo.country}` : ""}`;
 						`[Chat API] Searching Shopify products with query: "${searchTerm || "(featured/catalog)"}"`,
 					);
 
-					let products = await searchProducts(searchTerm, 8);
+					let products = (clientProducts && Array.isArray(clientProducts) && clientProducts.length > 0) ? clientProducts : await searchProducts(searchTerm, 8);
 
 					// If specific search yielded 0 results and we had a search term, fallback to featured products
 					if ((!products || products.length === 0) && searchTerm) {

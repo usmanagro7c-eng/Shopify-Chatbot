@@ -10,9 +10,9 @@
   const DEFAULT_CONFIG = {
     apiUrl: window.location.origin,
     position: 'bottom-right',
-    title: 'Habibi Arts & Crafts',
+    title: 'Flexifit Concierge',
     subtitle: 'Online • Instant Support',
-    placeholder: 'Prints, prices ya order ke mutabiq poochen...',
+    placeholder: 'Puffer jackets, size guide (M-2XL), COD...',
     theme: 'light',
     width: '385px',
     height: '580px',
@@ -98,7 +98,7 @@
    * Create the chat widget DOM (instant, non-blocking)
    */
   function createWidget(config) {
-    let greeting = 'Assalam-o-Alaikum! Main Habibi Arts & Crafts assistant hoon. Main aap ki kya madad kar sakta hoon?';
+    let greeting = 'Assalam-o-Alaikum! Main Flexifit Luxury Outerwear assistant hoon. Main aap ki kya madad kar sakta hoon?';
     let suggestedQuestions = Array.isArray(config.quickReplies) && config.quickReplies.length > 0 
       ? config.quickReplies 
       : [

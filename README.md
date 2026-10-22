@@ -185,6 +185,22 @@ bun run qa          # end-to-end chat QA against the live store
 bun start           # run compiled server
 ```
 
+### Host-theme integration
+
+The widget adds `ai-chatbot-open` to `<body>` while the panel is open, so a
+theme can hide its own floating buttons and the two never overlap:
+
+```css
+/* hides the WhatsApp bubble while the chat is open */
+body.ai-chatbot-open .ff-wa-floating-widget {
+  display: none !important;
+}
+```
+
+The Flexifit theme (`snippets/ai-chatbot-widget.liquid`) is the generated
+embed — regenerate it with `bun run sync:embed` and copy the result over; do
+not hand-edit it.
+
 ### Local preview
 
 ```bash

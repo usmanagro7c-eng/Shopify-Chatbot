@@ -18,6 +18,7 @@ An intelligent, embeddable chatbot for Shopify stores. Built with the Strategy P
 - **Dual strategy pattern** — `portfolio`, `ecommerce`, `default` behavior strategies
 - **Embeddable widget** — drop-in script, product cards, quick replies, teaser balloon, mobile full-screen
 - **Mobile-first responsive UI** — safe areas, dynamic viewport units, 40–44px touch targets, landscape support, reduced-motion support
+- **Accessible by default** — WCAG AA contrast in light and dark, a labelled composer, `role="alert"` errors with a retry action, visible focus rings, no keyboard traps
 - **REST API** — `POST /api/chat` with strategy + session support
 - **Tracing** — optional Langfuse integration for OpenAI call observability
 - **CI/CD** — GitHub Actions (lint, type-check, tests, Docker) + auto-deploy to Vercel
@@ -212,6 +213,19 @@ The full report is written to `qa-report.json` (gitignored).
 ```
 RESULT: 27/27 passed
 ```
+
+### Accessibility
+
+The widget is audited against WCAG 2.2 AA in both themes:
+
+| Area | What is in place |
+|------|------------------|
+| Contrast | Body, secondary and metadata text all ≥ 4.5:1 in light and dark (verified with a measured audit) |
+| Touch targets | 40–44px on phones and coarse-pointer devices, never below the 24px WCAG minimum on desktop |
+| Composer | A real `<label>` (visually hidden) plus `aria-label`, `enterkeyhint="send"`, 16px input so iOS does not zoom |
+| Errors | `role="alert"` so screen readers announce them, plus a "Try again" button that re-sends the failed message |
+| Focus | Visible focus rings on every control, `scroll-padding` so a focused message is never hidden behind the composer, `Escape` closes the panel |
+| Motion | `prefers-reduced-motion` disables the animations |
 
 ## Deploy to Vercel
 

@@ -921,6 +921,10 @@
     chatWidget.fab.setAttribute('aria-label', 'Close chat assistance');
     localStorage.setItem('ai-chatbot-state', 'open');
 
+    // Generic hook for the host theme: it can hide its own floating widgets
+    // (e.g. a WhatsApp bubble) while the chat is open, so they never overlap.
+    document.body.classList.add('ai-chatbot-open');
+
     // Prevent body scroll on mobile
     if (window.innerWidth <= 640) {
       lockBodyScroll();
@@ -947,6 +951,7 @@
       chatWidget.fab.setAttribute('aria-expanded', 'false');
       chatWidget.fab.setAttribute('aria-label', 'Open chat assistance');
       localStorage.setItem('ai-chatbot-state', 'closed');
+      document.body.classList.remove('ai-chatbot-open');
       unlockBodyScroll();
     } else {
       openWidget();

@@ -12,7 +12,7 @@
     position: 'bottom-right',
     title: 'Flexifit Concierge',
     subtitle: 'Online • Instant Support',
-    placeholder: 'Puffer jackets, size guide (M-2XL), COD...',
+    placeholder: 'Ask about products…',
     theme: 'light',
     width: '385px',
     height: '580px',
@@ -20,7 +20,7 @@
     userId: null,
     quickReplies: null,
     enableTeaser: true,
-    teaserMessage: '👋 Assalam-o-Alaikum! Need help with products or tracking your order?',
+    teaserMessage: 'Hello! Need help with products or tracking your order?',
   };
 
   const SESSION_ID_KEY = 'ai-chatbot-session-id';
@@ -98,14 +98,14 @@
    * Create the chat widget DOM (instant, non-blocking)
    */
   function createWidget(config) {
-    let greeting = 'Assalam-o-Alaikum! Main Flexifit Luxury Outerwear assistant hoon. Main aap ki kya madad kar sakta hoon?';
+    let greeting = "Hello! I'm the Flexifit Outerwear shopping assistant. How can I help you today?";
     let suggestedQuestions = Array.isArray(config.quickReplies) && config.quickReplies.length > 0 
       ? config.quickReplies 
       : [
-          '🛍️ Products dikhao',
-          '📦 Mera order track karo',
-          '🎨 Custom Calligraphy Frames',
-          '🚚 Delivery time & charges'
+          'Show me puffer jackets',
+          'Track my order',
+          'Custom calligraphy frames',
+          'Delivery time & charges'
         ];
 
     // 1. Floating Action Button (FAB)
@@ -216,10 +216,32 @@
     resetBtn.setAttribute('title', 'Clear Chat');
     resetBtn.setAttribute('aria-label', 'Clear Chat');
     resetBtn.innerHTML = ICON_HEADER_CLEAR;
-    resetBtn.onclick = () => {
-      if (confirm('Are you sure you want to clear this conversation?')) {
-        clearHistory();
+
+    // Inline two-tap confirm instead of window.confirm(), which is blocked or
+    // looks broken inside cross-origin Shopify embeds.
+    let clearArmed = false;
+    let clearArmTimer = null;
+    const disarmClear = () => {
+      clearArmed = false;
+      if (clearArmTimer) {
+        clearTimeout(clearArmTimer);
+        clearArmTimer = null;
       }
+      resetBtn.classList.remove('ai-armed');
+      resetBtn.setAttribute('title', 'Clear Chat');
+      resetBtn.setAttribute('aria-label', 'Clear Chat');
+    };
+    resetBtn.onclick = () => {
+      if (!clearArmed) {
+        clearArmed = true;
+        resetBtn.classList.add('ai-armed');
+        resetBtn.setAttribute('title', 'Tap again to confirm');
+        resetBtn.setAttribute('aria-label', 'Tap again to confirm clear chat');
+        clearArmTimer = setTimeout(disarmClear, 3000);
+        return;
+      }
+      disarmClear();
+      clearHistory();
     };
 
     const closeBtn = document.createElement('button');
@@ -239,6 +261,9 @@
     // 5. Messages Container
     const messagesContainer = document.createElement('div');
     messagesContainer.className = 'ai-chatbot-messages';
+    messagesContainer.setAttribute('role', 'log');
+    messagesContainer.setAttribute('aria-live', 'polite');
+    messagesContainer.setAttribute('aria-label', 'Conversation messages');
 
     // Jump to latest button
     const jumpBtn = document.createElement('button');
@@ -266,6 +291,9 @@
     input.type = 'text';
     input.placeholder = config.placeholder;
     input.setAttribute('aria-label', 'Type your message');
+    input.setAttribute('enterkeyhint', 'send');
+    input.setAttribute('inputmode', 'text');
+    input.setAttribute('autocapitalize', 'sentences');
     input.autocomplete = 'off';
 
     const sendBtn = document.createElement('button');
@@ -387,6 +415,32 @@
     } else {
       container.style.display = 'none';
     }
+
+    // Keep the widget sized to the *visible* viewport on mobile so the message
+    // input stays above the on-screen keyboard when it opens. The CSS media
+    // query reads --ai-widget-height (falls back to 100dvh when unset).
+    const syncViewportHeight = () => {
+      const vv = window.visualViewport;
+      if (vv && window.innerWidth <= 640) {
+        container.style.setProperty('--ai-widget-height', `${Math.round(vv.height)}px`);
+      } else {
+        container.style.removeProperty('--ai-widget-height');
+      }
+    };
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewportHeight);
+      window.visualViewport.addEventListener('scroll', syncViewportHeight);
+    }
+    window.addEventListener('resize', syncViewportHeight);
+    input.addEventListener('focus', syncViewportHeight);
+    syncViewportHeight();
+
+    // Escape closes the panel (keyboard parity with the close button).
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && chatWidget && chatWidget.isOpen) {
+        toggleWidget();
+      }
+    });
 
     // Initial greeting
     addMessage('assistant', greeting);
@@ -746,6 +800,29 @@
   }
 
   /**
+   * Lock the host page behind the full-screen mobile chat.
+   * `overflow:hidden` alone still lets iOS scroll the page, so we pin the body
+   * and restore the exact scroll offset when the chat closes.
+   */
+  let lockedScrollY = 0;
+
+  function lockBodyScroll() {
+    const body = document.body;
+    if (!body || body.classList.contains('ai-chatbot-body-locked')) return;
+    lockedScrollY = window.scrollY || window.pageYOffset || 0;
+    body.style.top = `-${lockedScrollY}px`;
+    body.classList.add('ai-chatbot-body-locked');
+  }
+
+  function unlockBodyScroll() {
+    const body = document.body;
+    if (!body || !body.classList.contains('ai-chatbot-body-locked')) return;
+    body.classList.remove('ai-chatbot-body-locked');
+    body.style.top = '';
+    window.scrollTo(0, lockedScrollY);
+  }
+
+  /**
    * Open widget
    */
   function openWidget() {
@@ -766,7 +843,7 @@
 
     // Prevent body scroll on mobile
     if (window.innerWidth <= 640) {
-      document.body.style.overflow = 'hidden';
+      lockBodyScroll();
     }
 
     setTimeout(() => {
@@ -790,7 +867,7 @@
       chatWidget.fab.setAttribute('aria-expanded', 'false');
       chatWidget.fab.setAttribute('aria-label', 'Open chat assistance');
       localStorage.setItem('ai-chatbot-state', 'closed');
-      document.body.style.overflow = '';
+      unlockBodyScroll();
     } else {
       openWidget();
     }

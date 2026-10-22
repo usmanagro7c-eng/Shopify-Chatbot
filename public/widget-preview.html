@@ -159,6 +159,23 @@
       color: #947118;
     }
 
+    .hint {
+      margin: 12px 0 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 600px) {
+      .btn,
+      .chip-btn {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
     .footer {
       margin-top: 24px;
       font-size: 12px;
@@ -187,11 +204,16 @@
     <div class="test-queries">
       <h3>Quick Test Messages</h3>
       <div class="query-chips">
-        <button class="chip-btn" onclick="sendSample('Products dikhao')">🛍️ "Products dikhao"</button>
-        <button class="chip-btn" onclick="sendSample('Mera order track karo #1001')">📦 "Mera order track karo #1001"</button>
-        <button class="chip-btn" onclick="sendSample('Custom Islamic calligraphy frame mil sakta hai?')">🎨 "Custom calligraphy frames"</button>
-        <button class="chip-btn" onclick="sendSample('Delivery charges aur time kya hai?')">🚚 "Delivery charges aur time"</button>
+        <button class="chip-btn" onclick="sendSample('Show me puffer jackets')">Show me puffer jackets</button>
+        <button class="chip-btn" onclick="sendSample('Track my order #1001')">Track my order #1001</button>
+        <button class="chip-btn" onclick="sendSample('Do you have custom calligraphy frames?')">Custom calligraphy frames</button>
+        <button class="chip-btn" onclick="sendSample('What are the delivery charges and delivery time?')">Delivery charges &amp; time</button>
+        <button class="chip-btn" onclick="sendSample('kya products hain?')">Roman Urdu → English check</button>
       </div>
+      <p class="hint">
+        The last chip sends Roman Urdu on purpose — the assistant understands it
+        but always answers in English.
+      </p>
     </div>
 
     <div class="footer">
@@ -206,16 +228,20 @@
 
     function initPreview() {
       if (window.AIChatbot) {
+        // ?apiUrl= lets you point the preview at a local backend for testing.
+        const params = new URLSearchParams(window.location.search);
+        const apiUrl = params.get('apiUrl') || 'https://shopify-chatbot-seven.vercel.app';
+
         AIChatbot.init({
-          apiUrl: 'https://variety-snooze-salaried.ngrok-free.dev',
+          apiUrl: apiUrl,
           title: 'Flexifit Outerwear',
           subtitle: 'Online • Shopping & Support',
-          placeholder: 'Prints, custom calligraphy, ya order status...',
+          placeholder: 'Ask about products…',
           position: currentPosition,
           theme: currentTheme,
           strategyType: 'ecommerce',
           enableTeaser: true,
-          teaserMessage: '👋 Assalam-o-Alaikum! Looking for custom Islamic art or need order tracking?'
+          teaserMessage: 'Hello! Need help with products or tracking your order?'
         });
       }
     }

@@ -62,6 +62,11 @@
   border-radius: 18px;
   box-shadow: var(--ai-shadow-widget);
   overflow: hidden;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  /* Keep the docked widget inside short viewports (landscape phones). */
+  max-height: calc(100vh - 110px);
+  max-height: calc(100dvh - 110px);
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform, opacity;
 }
@@ -144,6 +149,8 @@
   font-family: 'Plus Jakarta Sans', sans-serif !important;
   text-transform: none !important;
   letter-spacing: normal !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 #ai-chatbot-widget button::before,
@@ -155,6 +162,17 @@
   font-family: 'Plus Jakarta Sans', sans-serif !important;
   letter-spacing: normal !important;
   text-transform: none !important;
+}
+
+/* Host page scroll lock while the full-screen mobile chat is open.
+   The body is pinned (and the offset restored on close) because
+   `overflow: hidden` alone does not stop iOS from scrolling the page. */
+body.ai-chatbot-body-locked {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  overflow: hidden !important;
 }
 
 /* Positioning */
@@ -403,12 +421,32 @@
   outline-offset: 2px !important;
 }
 
+/* Armed state for the two-tap "clear chat" confirmation */
+.ai-header-btn.ai-armed {
+  background: rgba(240, 90, 90, 0.28) !important;
+  border-color: rgba(240, 90, 90, 0.7) !important;
+  color: #fca5a5 !important;
+  transform: scale(1.06) !important;
+}
+
+/* Consistent visible focus for every interactive control */
+.ai-chatbot-send-btn:focus-visible,
+.ai-chatbot-scroll-btn:focus-visible,
+.ai-copy-btn:focus-visible,
+.ai-chatbot-chip:focus-visible {
+  outline: 2px solid var(--ai-primary) !important;
+  outline-offset: 2px !important;
+}
+
 /* ==========================================================================
    Messages Container
    ========================================================================== */
 .ai-chatbot-messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 13px;
   display: flex;
   flex-direction: column;
@@ -523,6 +561,7 @@
 .ai-message-content-wrap {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   max-width: 82%;
 }
 
@@ -539,7 +578,9 @@
   position: relative !important;
   padding: 9px 13px !important;
   font-size: 13px !important;
+  max-width: 100% !important;
   word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
   line-height: 1.45 !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
 }
@@ -604,6 +645,14 @@
 .ai-copy-btn.copied {
   color: var(--ai-online);
   opacity: 1;
+}
+
+/* Touch devices have no hover, so the copy action must stay visible. */
+@media (hover: none) {
+  .ai-copy-btn {
+    opacity: 1 !important;
+    color: var(--ai-text-muted) !important;
+  }
 }
 
 /* Markdown typography inside assistant bubble */
@@ -699,9 +748,9 @@
   display: flex !important;
   align-items: center !important;
   gap: 4px !important;
-  font-size: 10px !important;
+  font-size: 10.5px !important;
   line-height: 1.2 !important;
-  color: var(--ai-text-subtle) !important;
+  color: var(--ai-text-muted) !important;
   margin-top: 2px !important;
   padding: 0 3px !important;
 }
@@ -1197,23 +1246,23 @@
 }
 
 #ai-chatbot-fab.bottom-right {
-  bottom: 22px;
-  right: 22px;
+  bottom: max(22px, env(safe-area-inset-bottom, 0px));
+  right: max(22px, env(safe-area-inset-right, 0px));
 }
 
 #ai-chatbot-fab.bottom-left {
-  bottom: 22px;
-  left: 22px;
+  bottom: max(22px, env(safe-area-inset-bottom, 0px));
+  left: max(22px, env(safe-area-inset-left, 0px));
 }
 
 #ai-chatbot-fab.top-right {
-  top: 22px;
-  right: 22px;
+  top: max(22px, env(safe-area-inset-top, 0px));
+  right: max(22px, env(safe-area-inset-right, 0px));
 }
 
 #ai-chatbot-fab.top-left {
-  top: 22px;
-  left: 22px;
+  top: max(22px, env(safe-area-inset-top, 0px));
+  left: max(22px, env(safe-area-inset-left, 0px));
 }
 
 @keyframes ai-fab-pulse {
@@ -1361,9 +1410,14 @@
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    width: 100vw !important;
+    /* 100vw includes the scrollbar gutter and causes horizontal overflow. */
+    width: 100% !important;
+    max-width: 100% !important;
+    /* --ai-widget-height is set from JS to the visualViewport height so the
+       composer stays above the on-screen keyboard. Falls back to 100%. */
     height: 100% !important;
-    max-width: 100vw !important;
+    height: var(--ai-widget-height, 100%) !important;
+    max-height: 100% !important;
     max-height: 100dvh !important;
     border-radius: 0 !important;
     border: none !important;
@@ -1383,35 +1437,206 @@
 
   .ai-chatbot-header {
     border-radius: 0 !important;
-    padding: 12px 14px !important;
-    padding-top: max(12px, env(safe-area-inset-top)) !important;
+    padding: 10px 12px !important;
+    padding-top: max(10px, env(safe-area-inset-top, 0px)) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .ai-header-actions {
+    gap: 10px !important;
+  }
+
+  /* Touch targets: 40px with a 10px gap (was 28px / 7px).
+     These are ID-scoped to outrank the `#ai-chatbot-widget button` theme
+     reset, which sets min-width/min-height/max-width to 0 !important. */
+  #ai-chatbot-widget .ai-header-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    border-radius: 10px !important;
+  }
+
+  #ai-chatbot-widget .ai-header-btn svg {
+    width: 16px !important;
+    height: 16px !important;
   }
 
   .ai-chatbot-messages {
     padding: 12px !important;
+    gap: 10px !important;
   }
 
   .ai-message-content-wrap {
     max-width: 88% !important;
   }
 
+  .ai-message-bubble {
+    padding: 10px 13px !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+  }
+
+  .ai-message-bubble p,
+  #ai-chatbot-widget p {
+    font-size: 14px !important;
+  }
+
+  .ai-message-bubble ul,
+  .ai-message-bubble ol {
+    padding-left: 20px !important;
+  }
+
+  .ai-bubble-actions {
+    margin-top: 6px !important;
+  }
+
+  #ai-chatbot-widget .ai-copy-btn {
+    min-height: 32px !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+
+  .ai-chatbot-quick-replies {
+    gap: 8px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-chip {
+    min-height: 40px !important;
+    padding: 8px 14px !important;
+    font-size: 12.5px !important;
+    border-radius: 10px !important;
+  }
+
+  .ai-chatbot-product-list {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+    gap: 8px !important;
+  }
+
   .ai-chatbot-form-container {
     padding: 10px 12px !important;
-    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+    flex-shrink: 0 !important;
   }
 
   .ai-chatbot-input-row input {
     font-size: 16px !important; /* Prevents auto-zoom in iOS Safari */
-    padding: 10px 14px !important;
+    min-height: 44px !important;
+    padding: 11px 14px !important;
+    border-radius: 11px !important;
   }
 
-  .ai-chatbot-send-btn {
+  #ai-chatbot-widget .ai-chatbot-send-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    border-radius: 11px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-scroll-btn {
     width: 38px !important;
     height: 38px !important;
     min-width: 38px !important;
     max-width: 38px !important;
     min-height: 38px !important;
     max-height: 38px !important;
-    border-radius: 9px !important;
+  }
+
+  .ai-typing-indicator {
+    padding: 13px 16px !important;
+  }
+}
+
+/* ==========================================================================
+   Coarse pointers (phones, tablets) — enlarge tap targets even when the
+   widget keeps its docked layout (tablets are wider than 640px).
+   ========================================================================== */
+@media (hover: none) and (pointer: coarse) {
+  #ai-chatbot-widget .ai-header-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-send-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-chip {
+    min-height: 40px !important;
+    padding: 8px 14px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-input-row input {
+    min-height: 44px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-scroll-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+  }
+}
+
+/* ==========================================================================
+   Landscape phones — vertical space is scarce, so compact the chrome
+   ========================================================================== */
+@media (max-height: 560px) and (orientation: landscape) {
+  .ai-chatbot-header {
+    padding: 6px 12px !important;
+    padding-top: max(6px, env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .ai-header-avatar-wrap {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .ai-chatbot-messages {
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+
+  .ai-chatbot-form-container {
+    padding: 6px 12px !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .ai-chatbot-footer-note {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Reduced motion — honour the OS setting
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  #ai-chatbot-widget,
+  #ai-chatbot-widget *,
+  #ai-chatbot-widget *::before,
+  #ai-chatbot-widget *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .ai-chatbot-messages {
+    scroll-behavior: auto !important;
   }
 }

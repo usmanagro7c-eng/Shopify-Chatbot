@@ -341,7 +341,7 @@ body.ai-chatbot-body-locked {
 .ai-header-subtitle {
   margin: 2px 0 0 !important;
   font-family: 'Plus Jakarta Sans', sans-serif !important;
-  font-size: 11px !important;
+  font-size: 11.5px !important;
   font-weight: 500 !important;
   line-height: 1.2 !important;
   color: var(--ai-header-subtext) !important;
@@ -447,6 +447,9 @@ body.ai-chatbot-body-locked {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  /* Keep keyboard-focused messages clear of the sticky composer/header. */
+  scroll-padding-top: 12px;
+  scroll-padding-bottom: 12px;
   padding: 13px;
   display: flex;
   flex-direction: column;
@@ -620,36 +623,43 @@ body.ai-chatbot-body-locked {
   margin-top: 4px;
 }
 
-.ai-copy-btn {
+/* Copy button on assistant bubbles.
+   ID-scoped so it outranks the `#ai-chatbot-widget button` theme reset
+   (min-width/min-height/max-width are forced to 0/auto there). */
+#ai-chatbot-widget .ai-copy-btn {
   background: transparent !important;
   border: none !important;
   cursor: pointer !important;
-  color: var(--ai-text-subtle) !important;
-  padding: 2px 5px !important;
-  font-size: 10px !important;
+  color: var(--ai-text-muted) !important;
+  padding: 3px 8px !important;
+  font-size: 11.5px !important;
   line-height: 1.2 !important;
-  border-radius: 4px !important;
+  border-radius: 5px !important;
   display: inline-flex !important;
   align-items: center !important;
   gap: 3px !important;
-  opacity: 0.6 !important;
-  transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease !important;
+  min-height: 26px !important;
+  opacity: 1 !important;
+  transition: color 0.15s ease, background-color 0.15s ease !important;
 }
 
-.ai-copy-btn:hover {
-  opacity: 1;
-  color: var(--ai-text-main);
-  background-color: var(--ai-bg-muted);
+#ai-chatbot-widget .ai-copy-btn:hover {
+  color: var(--ai-text-main) !important;
+  background-color: var(--ai-bg-muted) !important;
 }
 
-.ai-copy-btn.copied {
-  color: var(--ai-online);
-  opacity: 1;
+#ai-chatbot-widget .ai-copy-btn:focus-visible {
+  outline: 2px solid var(--ai-primary) !important;
+  outline-offset: 2px !important;
+}
+
+#ai-chatbot-widget .ai-copy-btn.copied {
+  color: var(--ai-online) !important;
 }
 
 /* Touch devices have no hover, so the copy action must stay visible. */
 @media (hover: none) {
-  .ai-copy-btn {
+  #ai-chatbot-widget .ai-copy-btn {
     opacity: 1 !important;
     color: var(--ai-text-muted) !important;
   }
@@ -743,12 +753,68 @@ body.ai-chatbot-body-locked {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
 }
 
+/* Screen-reader-only text (real label for the placeholder-only composer) */
+.ai-chatbot-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Error bubble + retry action */
+.ai-chatbot-message.ai-chatbot-error .ai-message-content-wrap {
+  align-items: flex-start;
+  max-width: 88%;
+}
+
+#ai-chatbot-widget .ai-retry-btn {
+  margin-top: 8px !important;
+  padding: 7px 14px !important;
+  min-height: 36px !important;
+  border-radius: 8px !important;
+  border: 1px solid #f8b4b4 !important;
+  background: #ffffff !important;
+  color: #9b1c1c !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease, transform 0.15s ease !important;
+}
+
+#ai-chatbot-widget .ai-retry-btn:hover {
+  background: #fff4f4 !important;
+  transform: translateY(-1px);
+}
+
+#ai-chatbot-widget .ai-retry-btn:active {
+  transform: translateY(0);
+}
+
+#ai-chatbot-widget .ai-retry-btn:focus-visible {
+  outline: 2px solid #9b1c1c !important;
+  outline-offset: 2px !important;
+}
+
+#ai-chatbot-widget.dark .ai-retry-btn {
+  background: #3b1616 !important;
+  border-color: #5c2020 !important;
+  color: #fca5a5 !important;
+}
+
 /* Message timestamps and checkmark */
 .ai-chatbot-meta {
   display: flex !important;
   align-items: center !important;
   gap: 4px !important;
-  font-size: 10.5px !important;
+  font-size: 11.5px !important;
   line-height: 1.2 !important;
   color: var(--ai-text-muted) !important;
   margin-top: 2px !important;
@@ -985,7 +1051,7 @@ body.ai-chatbot-body-locked {
 }
 
 .ai-chatbot-input-row input::placeholder {
-  color: var(--ai-text-subtle);
+  color: var(--ai-text-muted);
   opacity: 0.9;
 }
 
@@ -1074,9 +1140,9 @@ body.ai-chatbot-body-locked {
 
 .ai-chatbot-footer-note {
   font-family: 'Plus Jakarta Sans', sans-serif !important;
-  font-size: 10.5px !important;
+  font-size: 11.5px !important;
   line-height: 1.3 !important;
-  color: var(--ai-text-subtle) !important;
+  color: var(--ai-text-muted) !important;
   text-align: center !important;
   margin: 0 !important;
   display: flex !important;
@@ -1494,9 +1560,9 @@ body.ai-chatbot-body-locked {
   }
 
   #ai-chatbot-widget .ai-copy-btn {
-    min-height: 32px !important;
-    padding: 4px 8px !important;
-    font-size: 11px !important;
+    min-height: 40px !important;
+    padding: 4px 10px !important;
+    font-size: 12px !important;
   }
 
   .ai-chatbot-quick-replies {
@@ -1545,6 +1611,12 @@ body.ai-chatbot-body-locked {
     max-width: 38px !important;
     min-height: 38px !important;
     max-height: 38px !important;
+  }
+
+  #ai-chatbot-widget .ai-retry-btn {
+    min-height: 44px !important;
+    padding: 10px 18px !important;
+    font-size: 13.5px !important;
   }
 
   .ai-typing-indicator {

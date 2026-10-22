@@ -508,6 +508,7 @@ The live Shopify product catalog could not be loaded (the store API returned an 
 				res.status(429).json({
 					success: false,
 					error: "Rate limit exceeded. Please try again later.",
+					retryable: true,
 				});
 				return;
 			}
@@ -519,11 +520,26 @@ The live Shopify product catalog could not be loaded (the store API returned an 
 				});
 				return;
 			}
+
+			// The upstream model provider is out of capacity or out of credits
+			// (OpenAI/OpenRouter return 429/402). These are temporary, so the
+			// client is told to retry instead of seeing a generic 500.
+			const upstreamStatus = (error as { status?: number }).status;
+			if (upstreamStatus === 429 || upstreamStatus === 402) {
+				res.status(503).json({
+					success: false,
+					error:
+						"The assistant is temporarily busy. Please try again in a moment.",
+					retryable: true,
+				});
+				return;
+			}
 		}
 
 		res.status(500).json({
 			success: false,
 			error: "Failed to get AI response",
+			retryable: false,
 		});
 	}
 });

@@ -8,6 +8,8 @@
     "dev": "node --loader ts-node/esm src/api/index.ts",
     "build:knowledge": "bun run src/knowledge/build.ts",
     "build": "tsc",
+    "sync:embed": "bun run scripts/sync-embed.mjs",
+    "qa": "bun run scripts/qa-chatbot.mjs",
     "vercel-build": "KNOWLEDGE_BUILD_STRICT=false bun run build:knowledge && bun run build",
     "start": "node dist/api/index.js",
     "test": "vitest run",
@@ -17,7 +19,7 @@
     "prepare": "simple-git-hooks"
   },
   "simple-git-hooks": {
-    "pre-commit": "bunx lint-staged"
+    "pre-commit": "bun x lint-staged"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json}": "biome check --write --no-errors-on-unmatched"

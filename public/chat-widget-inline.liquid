@@ -1,5 +1,10 @@
 <!-- ================= AI Chatbot Widget (INLINE) ================= -->
 <!-- Paste this whole block right before </body> in the PUBLISHED theme's layout/theme.liquid -->
+<!--
+  AUTO-GENERATED FILE — do not edit by hand.
+  Source: public/chat-widget.css + public/chat-widget.js
+  Regenerate with: bun run sync:embed
+-->
 <style>
 /**
  * AI Chatbot Widget Styles
@@ -65,6 +70,11 @@
   border-radius: 18px;
   box-shadow: var(--ai-shadow-widget);
   overflow: hidden;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  /* Keep the docked widget inside short viewports (landscape phones). */
+  max-height: calc(100vh - 110px);
+  max-height: calc(100dvh - 110px);
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform, opacity;
 }
@@ -147,6 +157,8 @@
   font-family: 'Plus Jakarta Sans', sans-serif !important;
   text-transform: none !important;
   letter-spacing: normal !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 #ai-chatbot-widget button::before,
@@ -158,6 +170,17 @@
   font-family: 'Plus Jakarta Sans', sans-serif !important;
   letter-spacing: normal !important;
   text-transform: none !important;
+}
+
+/* Host page scroll lock while the full-screen mobile chat is open.
+   The body is pinned (and the offset restored on close) because
+   `overflow: hidden` alone does not stop iOS from scrolling the page. */
+body.ai-chatbot-body-locked {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  overflow: hidden !important;
 }
 
 /* Positioning */
@@ -406,12 +429,32 @@
   outline-offset: 2px !important;
 }
 
+/* Armed state for the two-tap "clear chat" confirmation */
+.ai-header-btn.ai-armed {
+  background: rgba(240, 90, 90, 0.28) !important;
+  border-color: rgba(240, 90, 90, 0.7) !important;
+  color: #fca5a5 !important;
+  transform: scale(1.06) !important;
+}
+
+/* Consistent visible focus for every interactive control */
+.ai-chatbot-send-btn:focus-visible,
+.ai-chatbot-scroll-btn:focus-visible,
+.ai-copy-btn:focus-visible,
+.ai-chatbot-chip:focus-visible {
+  outline: 2px solid var(--ai-primary) !important;
+  outline-offset: 2px !important;
+}
+
 /* ==========================================================================
    Messages Container
    ========================================================================== */
 .ai-chatbot-messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 13px;
   display: flex;
   flex-direction: column;
@@ -526,6 +569,7 @@
 .ai-message-content-wrap {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   max-width: 82%;
 }
 
@@ -542,7 +586,9 @@
   position: relative !important;
   padding: 9px 13px !important;
   font-size: 13px !important;
+  max-width: 100% !important;
   word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
   line-height: 1.45 !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
 }
@@ -607,6 +653,14 @@
 .ai-copy-btn.copied {
   color: var(--ai-online);
   opacity: 1;
+}
+
+/* Touch devices have no hover, so the copy action must stay visible. */
+@media (hover: none) {
+  .ai-copy-btn {
+    opacity: 1 !important;
+    color: var(--ai-text-muted) !important;
+  }
 }
 
 /* Markdown typography inside assistant bubble */
@@ -702,9 +756,9 @@
   display: flex !important;
   align-items: center !important;
   gap: 4px !important;
-  font-size: 10px !important;
+  font-size: 10.5px !important;
   line-height: 1.2 !important;
-  color: var(--ai-text-subtle) !important;
+  color: var(--ai-text-muted) !important;
   margin-top: 2px !important;
   padding: 0 3px !important;
 }
@@ -1200,23 +1254,23 @@
 }
 
 #ai-chatbot-fab.bottom-right {
-  bottom: 22px;
-  right: 22px;
+  bottom: max(22px, env(safe-area-inset-bottom, 0px));
+  right: max(22px, env(safe-area-inset-right, 0px));
 }
 
 #ai-chatbot-fab.bottom-left {
-  bottom: 22px;
-  left: 22px;
+  bottom: max(22px, env(safe-area-inset-bottom, 0px));
+  left: max(22px, env(safe-area-inset-left, 0px));
 }
 
 #ai-chatbot-fab.top-right {
-  top: 22px;
-  right: 22px;
+  top: max(22px, env(safe-area-inset-top, 0px));
+  right: max(22px, env(safe-area-inset-right, 0px));
 }
 
 #ai-chatbot-fab.top-left {
-  top: 22px;
-  left: 22px;
+  top: max(22px, env(safe-area-inset-top, 0px));
+  left: max(22px, env(safe-area-inset-left, 0px));
 }
 
 @keyframes ai-fab-pulse {
@@ -1364,9 +1418,14 @@
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    width: 100vw !important;
+    /* 100vw includes the scrollbar gutter and causes horizontal overflow. */
+    width: 100% !important;
+    max-width: 100% !important;
+    /* --ai-widget-height is set from JS to the visualViewport height so the
+       composer stays above the on-screen keyboard. Falls back to 100%. */
     height: 100% !important;
-    max-width: 100vw !important;
+    height: var(--ai-widget-height, 100%) !important;
+    max-height: 100% !important;
     max-height: 100dvh !important;
     border-radius: 0 !important;
     border: none !important;
@@ -1386,39 +1445,209 @@
 
   .ai-chatbot-header {
     border-radius: 0 !important;
-    padding: 12px 14px !important;
-    padding-top: max(12px, env(safe-area-inset-top)) !important;
+    padding: 10px 12px !important;
+    padding-top: max(10px, env(safe-area-inset-top, 0px)) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .ai-header-actions {
+    gap: 10px !important;
+  }
+
+  /* Touch targets: 40px with a 10px gap (was 28px / 7px).
+     These are ID-scoped to outrank the `#ai-chatbot-widget button` theme
+     reset, which sets min-width/min-height/max-width to 0 !important. */
+  #ai-chatbot-widget .ai-header-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    border-radius: 10px !important;
+  }
+
+  #ai-chatbot-widget .ai-header-btn svg {
+    width: 16px !important;
+    height: 16px !important;
   }
 
   .ai-chatbot-messages {
     padding: 12px !important;
+    gap: 10px !important;
   }
 
   .ai-message-content-wrap {
     max-width: 88% !important;
   }
 
+  .ai-message-bubble {
+    padding: 10px 13px !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+  }
+
+  .ai-message-bubble p,
+  #ai-chatbot-widget p {
+    font-size: 14px !important;
+  }
+
+  .ai-message-bubble ul,
+  .ai-message-bubble ol {
+    padding-left: 20px !important;
+  }
+
+  .ai-bubble-actions {
+    margin-top: 6px !important;
+  }
+
+  #ai-chatbot-widget .ai-copy-btn {
+    min-height: 32px !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+
+  .ai-chatbot-quick-replies {
+    gap: 8px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-chip {
+    min-height: 40px !important;
+    padding: 8px 14px !important;
+    font-size: 12.5px !important;
+    border-radius: 10px !important;
+  }
+
+  .ai-chatbot-product-list {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+    gap: 8px !important;
+  }
+
   .ai-chatbot-form-container {
     padding: 10px 12px !important;
-    padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+    flex-shrink: 0 !important;
   }
 
   .ai-chatbot-input-row input {
     font-size: 16px !important; /* Prevents auto-zoom in iOS Safari */
-    padding: 10px 14px !important;
+    min-height: 44px !important;
+    padding: 11px 14px !important;
+    border-radius: 11px !important;
   }
 
-  .ai-chatbot-send-btn {
+  #ai-chatbot-widget .ai-chatbot-send-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    border-radius: 11px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-scroll-btn {
     width: 38px !important;
     height: 38px !important;
     min-width: 38px !important;
     max-width: 38px !important;
     min-height: 38px !important;
     max-height: 38px !important;
-    border-radius: 9px !important;
+  }
+
+  .ai-typing-indicator {
+    padding: 13px 16px !important;
   }
 }
 
+/* ==========================================================================
+   Coarse pointers (phones, tablets) — enlarge tap targets even when the
+   widget keeps its docked layout (tablets are wider than 640px).
+   ========================================================================== */
+@media (hover: none) and (pointer: coarse) {
+  #ai-chatbot-widget .ai-header-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-send-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-chip {
+    min-height: 40px !important;
+    padding: 8px 14px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-input-row input {
+    min-height: 44px !important;
+  }
+
+  #ai-chatbot-widget .ai-chatbot-scroll-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+  }
+}
+
+/* ==========================================================================
+   Landscape phones — vertical space is scarce, so compact the chrome
+   ========================================================================== */
+@media (max-height: 560px) and (orientation: landscape) {
+  .ai-chatbot-header {
+    padding: 6px 12px !important;
+    padding-top: max(6px, env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .ai-header-avatar-wrap {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .ai-chatbot-messages {
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+
+  .ai-chatbot-form-container {
+    padding: 6px 12px !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .ai-chatbot-footer-note {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Reduced motion — honour the OS setting
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  #ai-chatbot-widget,
+  #ai-chatbot-widget *,
+  #ai-chatbot-widget *::before,
+  #ai-chatbot-widget *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .ai-chatbot-messages {
+    scroll-behavior: auto !important;
+  }
+}
 </style>
 
 <script>
@@ -1434,9 +1663,9 @@
   const DEFAULT_CONFIG = {
     apiUrl: window.location.origin,
     position: 'bottom-right',
-    title: 'Habibi Arts & Crafts',
+    title: 'Flexifit Concierge',
     subtitle: 'Online • Instant Support',
-    placeholder: 'Prints, prices ya order ke mutabiq poochen...',
+    placeholder: 'Ask about products…',
     theme: 'light',
     width: '385px',
     height: '580px',
@@ -1444,7 +1673,7 @@
     userId: null,
     quickReplies: null,
     enableTeaser: true,
-    teaserMessage: '👋 Assalam-o-Alaikum! Need help with products or tracking your order?',
+    teaserMessage: 'Hello! Need help with products or tracking your order?',
   };
 
   const SESSION_ID_KEY = 'ai-chatbot-session-id';
@@ -1522,14 +1751,14 @@
    * Create the chat widget DOM (instant, non-blocking)
    */
   function createWidget(config) {
-    let greeting = 'Assalam-o-Alaikum! Main Habibi Arts & Crafts assistant hoon. Main aap ki kya madad kar sakta hoon?';
+    let greeting = "Hello! I'm the Flexifit Outerwear shopping assistant. How can I help you today?";
     let suggestedQuestions = Array.isArray(config.quickReplies) && config.quickReplies.length > 0 
       ? config.quickReplies 
       : [
-          '🛍️ Products dikhao',
-          '📦 Mera order track karo',
-          '🎨 Custom Calligraphy Frames',
-          '🚚 Delivery time & charges'
+          'Show me puffer jackets',
+          'Track my order',
+          'Custom calligraphy frames',
+          'Delivery time & charges'
         ];
 
     // 1. Floating Action Button (FAB)
@@ -1640,10 +1869,32 @@
     resetBtn.setAttribute('title', 'Clear Chat');
     resetBtn.setAttribute('aria-label', 'Clear Chat');
     resetBtn.innerHTML = ICON_HEADER_CLEAR;
-    resetBtn.onclick = () => {
-      if (confirm('Are you sure you want to clear this conversation?')) {
-        clearHistory();
+
+    // Inline two-tap confirm instead of window.confirm(), which is blocked or
+    // looks broken inside cross-origin Shopify embeds.
+    let clearArmed = false;
+    let clearArmTimer = null;
+    const disarmClear = () => {
+      clearArmed = false;
+      if (clearArmTimer) {
+        clearTimeout(clearArmTimer);
+        clearArmTimer = null;
       }
+      resetBtn.classList.remove('ai-armed');
+      resetBtn.setAttribute('title', 'Clear Chat');
+      resetBtn.setAttribute('aria-label', 'Clear Chat');
+    };
+    resetBtn.onclick = () => {
+      if (!clearArmed) {
+        clearArmed = true;
+        resetBtn.classList.add('ai-armed');
+        resetBtn.setAttribute('title', 'Tap again to confirm');
+        resetBtn.setAttribute('aria-label', 'Tap again to confirm clear chat');
+        clearArmTimer = setTimeout(disarmClear, 3000);
+        return;
+      }
+      disarmClear();
+      clearHistory();
     };
 
     const closeBtn = document.createElement('button');
@@ -1663,6 +1914,9 @@
     // 5. Messages Container
     const messagesContainer = document.createElement('div');
     messagesContainer.className = 'ai-chatbot-messages';
+    messagesContainer.setAttribute('role', 'log');
+    messagesContainer.setAttribute('aria-live', 'polite');
+    messagesContainer.setAttribute('aria-label', 'Conversation messages');
 
     // Jump to latest button
     const jumpBtn = document.createElement('button');
@@ -1690,6 +1944,9 @@
     input.type = 'text';
     input.placeholder = config.placeholder;
     input.setAttribute('aria-label', 'Type your message');
+    input.setAttribute('enterkeyhint', 'send');
+    input.setAttribute('inputmode', 'text');
+    input.setAttribute('autocapitalize', 'sentences');
     input.autocomplete = 'off';
 
     const sendBtn = document.createElement('button');
@@ -1811,6 +2068,32 @@
     } else {
       container.style.display = 'none';
     }
+
+    // Keep the widget sized to the *visible* viewport on mobile so the message
+    // input stays above the on-screen keyboard when it opens. The CSS media
+    // query reads --ai-widget-height (falls back to 100dvh when unset).
+    const syncViewportHeight = () => {
+      const vv = window.visualViewport;
+      if (vv && window.innerWidth <= 640) {
+        container.style.setProperty('--ai-widget-height', `${Math.round(vv.height)}px`);
+      } else {
+        container.style.removeProperty('--ai-widget-height');
+      }
+    };
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewportHeight);
+      window.visualViewport.addEventListener('scroll', syncViewportHeight);
+    }
+    window.addEventListener('resize', syncViewportHeight);
+    input.addEventListener('focus', syncViewportHeight);
+    syncViewportHeight();
+
+    // Escape closes the panel (keyboard parity with the close button).
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && chatWidget && chatWidget.isOpen) {
+        toggleWidget();
+      }
+    });
 
     // Initial greeting
     addMessage('assistant', greeting);
@@ -2170,6 +2453,29 @@
   }
 
   /**
+   * Lock the host page behind the full-screen mobile chat.
+   * `overflow:hidden` alone still lets iOS scroll the page, so we pin the body
+   * and restore the exact scroll offset when the chat closes.
+   */
+  let lockedScrollY = 0;
+
+  function lockBodyScroll() {
+    const body = document.body;
+    if (!body || body.classList.contains('ai-chatbot-body-locked')) return;
+    lockedScrollY = window.scrollY || window.pageYOffset || 0;
+    body.style.top = `-${lockedScrollY}px`;
+    body.classList.add('ai-chatbot-body-locked');
+  }
+
+  function unlockBodyScroll() {
+    const body = document.body;
+    if (!body || !body.classList.contains('ai-chatbot-body-locked')) return;
+    body.classList.remove('ai-chatbot-body-locked');
+    body.style.top = '';
+    window.scrollTo(0, lockedScrollY);
+  }
+
+  /**
    * Open widget
    */
   function openWidget() {
@@ -2190,7 +2496,7 @@
 
     // Prevent body scroll on mobile
     if (window.innerWidth <= 640) {
-      document.body.style.overflow = 'hidden';
+      lockBodyScroll();
     }
 
     setTimeout(() => {
@@ -2214,7 +2520,7 @@
       chatWidget.fab.setAttribute('aria-expanded', 'false');
       chatWidget.fab.setAttribute('aria-label', 'Open chat assistance');
       localStorage.setItem('ai-chatbot-state', 'closed');
-      document.body.style.overflow = '';
+      unlockBodyScroll();
     } else {
       openWidget();
     }
@@ -2254,7 +2560,6 @@
     }
   });
 })();
-
 </script>
 
 <!-- Initialize Chatbot on your Shopify Store -->
@@ -2263,15 +2568,15 @@
     function initAIChatbot() {
       if (window.AIChatbot) {
         AIChatbot.init({
-          apiUrl: 'https://variety-snooze-salaried.ngrok-free.dev', // <-- Apna active backend / ngrok URL yahan verify karein
-          title: 'Habibi Arts & Crafts',
-          subtitle: 'Online • Shopping & Support',
-          placeholder: 'Prints, prices ya order ke mutabiq poochen...',
-          position: 'bottom-left', // WhatsApp button bottom-right par hai, is liye bottom-left set hai taake overlap na ho
-          theme: 'light',
-          strategyType: 'ecommerce',
+          apiUrl: "https://shopify-chatbot-seven.vercel.app",
+          title: "Flexifit Outerwear",
+          subtitle: "Online • Shopping & Support",
+          placeholder: "Ask about products…",
+          position: "bottom-left",
+          theme: "light",
+          strategyType: "ecommerce",
           enableTeaser: true,
-          teaserMessage: '👋 Assalam-o-Alaikum! Need help with products or tracking your order?'
+          teaserMessage: "Hello! Need help with products or tracking your order?"
         });
       }
     }

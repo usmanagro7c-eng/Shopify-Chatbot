@@ -228,19 +228,43 @@ console.log("");
 const results = [];
 for (const c of CASES) {
 	let r;
-	try {
-		const res = await fetch(`${API}/api/chat`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				message: c.q,
-				strategyType: "ecommerce",
-				sessionId: `qa-${Math.random().toString(36).slice(2)}`,
-			}),
+	let lastError = null;
+
+	// The model provider can reject bursts with 402/429 ("in-flight requests").
+	// Retry with a backoff so a transient provider limit is not reported as a
+	// product/UX failure.
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const res = await fetch(`${API}/api/chat`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					message: c.q,
+					strategyType: "ecommerce",
+					sessionId: `qa-${Math.random().toString(36).slice(2)}`,
+				}),
+			});
+			const body = await res.json();
+			if (res.ok && body?.success) {
+				r = body;
+				break;
+			}
+			lastError = new Error(
+				`HTTP ${res.status}: ${JSON.stringify(body).slice(0, 160)}`,
+			);
+		} catch (error) {
+			lastError = error;
+		}
+		await sleep(6000 * (attempt + 1));
+	}
+
+	if (!r) {
+		results.push({
+			...c,
+			reply: `ERROR ${lastError ? lastError.message : "unknown"}`,
+			cards: 0,
+			issues: ["request failed"],
 		});
-		r = await res.json();
-	} catch (error) {
-		results.push({ ...c, reply: `ERROR ${error.message}`, cards: 0, issues: ["request failed"] });
 		await sleep(2500);
 		continue;
 	}

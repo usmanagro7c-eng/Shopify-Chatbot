@@ -41,7 +41,8 @@ import { traced } from "../integrations/langfuse.js";
 import type { KnowledgeChunk, KnowledgeIndex } from "./types.js";
 
 const PORTFOLIO_JSON_URL =
-	process.env.PORTFOLIO_JSON_URL || "https://your-domain.com/data/portfolio.json";
+	process.env.PORTFOLIO_JSON_URL ||
+	"https://your-domain.com/data/portfolio.json";
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const OUT_PATH = join(process.cwd(), "data", "knowledge.json");
 

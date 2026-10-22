@@ -42,9 +42,7 @@ function getOpenAIClient(): OpenAI {
  */
 function getChatModel(): string {
 	return (
-		process.env.OPENROUTER_MODEL ||
-		process.env.OPENAI_MODEL ||
-		"gpt-4o-mini"
+		process.env.OPENROUTER_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini"
 	);
 }
 

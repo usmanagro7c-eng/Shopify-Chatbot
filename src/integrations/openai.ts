@@ -81,6 +81,28 @@ function isWithinRateLimit(): boolean {
 	return true;
 }
 
+/**
+ * Some provider accounts have a small credit balance, and the API rejects a
+ * request that asks for more max_tokens than the balance can afford
+ * ("... you requested up to 1000 tokens, but can only afford 812").
+ * Returns the affordable amount, or null when the error is something else.
+ */
+function extractAffordableTokens(error: unknown): number | null {
+	const message = error instanceof Error ? error.message : "";
+	const match = /can only afford (\d+)/i.exec(message);
+	if (!match) return null;
+
+	const affordable = Number(match[1]);
+	return Number.isFinite(affordable) && affordable > 0 ? affordable : null;
+}
+
+/**
+ * Minimum max_tokens we are willing to fall back to. Below this a reply
+ * would be truncated mid-sentence, so it is better to fail than to send a
+ * half answer.
+ */
+const MIN_MAX_TOKENS = 120;
+
 export interface RequestTraceOpts {
 	sessionId?: string;
 	userId?: string;
@@ -152,16 +174,36 @@ export async function getAIResponse(
 			},
 		});
 		const model: string = getChatModel();
-		const maxTokens: number = parseInt(
+		let maxTokens: number = parseInt(
 			process.env.OPENAI_MAX_TOKENS || "1000",
 			10,
 		);
-		const response = await client.chat.completions.create({
-			model,
-			messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
-			max_tokens: maxTokens,
-			temperature: 0.7,
-		});
+		const request = (tokenLimit: number) =>
+			client.chat.completions.create({
+				model,
+				messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
+				max_tokens: tokenLimit,
+				temperature: 0.7,
+			});
+
+		let response: OpenAI.Chat.Completions.ChatCompletion;
+		try {
+			response = await request(maxTokens);
+		} catch (error) {
+			// The account balance cannot cover max_tokens — retry with what the
+			// provider says it can afford instead of failing the customer.
+			const affordable = extractAffordableTokens(error);
+			if (affordable && affordable < maxTokens) {
+				const reduced = Math.max(MIN_MAX_TOKENS, affordable - 40);
+				console.warn(
+					`[OpenAI] Credit limit reached — retrying with max_tokens ${maxTokens} -> ${reduced}`,
+				);
+				maxTokens = reduced;
+				response = await request(maxTokens);
+			} else {
+				throw error;
+			}
+		}
 
 		// Extract response
 		const responseText: string =

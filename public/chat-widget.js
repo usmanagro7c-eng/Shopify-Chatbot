@@ -52,6 +52,8 @@
 
   let chatWidget = null;
   let messages = [];
+  // Set by the widget so an error bubble can re-send the failed message.
+  let sendMessageHandler = null;
 
   /**
    * Session ID for Langfuse attribution & continuity
@@ -289,12 +291,20 @@
 
     const input = document.createElement('input');
     input.type = 'text';
+    input.id = 'ai-chatbot-input';
     input.placeholder = config.placeholder;
     input.setAttribute('aria-label', 'Type your message');
     input.setAttribute('enterkeyhint', 'send');
     input.setAttribute('inputmode', 'text');
     input.setAttribute('autocapitalize', 'sentences');
     input.autocomplete = 'off';
+
+    // A placeholder is not a reliable accessible name, so the composer also
+    // gets a real (visually hidden) label element.
+    const inputLabel = document.createElement('label');
+    inputLabel.className = 'ai-chatbot-sr-only';
+    inputLabel.htmlFor = 'ai-chatbot-input';
+    inputLabel.textContent = 'Type your message';
 
     const sendBtn = document.createElement('button');
     sendBtn.type = 'submit';
@@ -307,6 +317,7 @@
       sendBtn.disabled = !input.value.trim();
     });
 
+    form.appendChild(inputLabel);
     form.appendChild(input);
     form.appendChild(sendBtn);
 
@@ -359,7 +370,18 @@
         });
 
         if (!response.ok) {
-          throw new Error(`API response error (${response.status})`);
+          // Read the API's error body so temporary failures (429/503) can show
+          // a useful message instead of a raw status code.
+          let detail = "";
+          try {
+            const errorBody = await response.json();
+            if (errorBody && errorBody.error) detail = String(errorBody.error);
+          } catch (_) {
+            // Body was not JSON — fall through to the generic message.
+          }
+          const apiError = new Error(detail || `API response error (${response.status})`);
+          apiError.status = response.status;
+          throw apiError;
         }
 
         const data = await response.json();
@@ -373,12 +395,23 @@
         }
       } catch (error) {
         hideTyping();
-        addMessage('error', `Connection error: ${error.message}`);
+        const status = error && error.status;
+        const isBusy = status === 429 || status === 503;
+        addMessage(
+          'error',
+          isBusy
+            ? "We're a bit busy right now. Please try again in a moment."
+            : "We couldn't reach the store right now. Please check your connection and try again.",
+          { retry: message, detail: error && error.message },
+        );
       } finally {
         sendBtn.innerHTML = ICON_SEND;
         sendBtn.disabled = !input.value.trim();
       }
     };
+
+    // Expose the sender so the error bubble can offer a retry.
+    sendMessageHandler = sendMessage;
 
     form.onsubmit = (e) => {
       e.preventDefault();
@@ -697,6 +730,53 @@
     }
 
     contentWrap.appendChild(bubble);
+
+    // A failed message must offer a way forward, not just an explanation.
+    if (role === 'error') {
+      bubble.setAttribute('role', 'alert');
+      if (extra && extra.detail) {
+        bubble.setAttribute('title', String(extra.detail));
+      }
+
+      if (extra && extra.retry) {
+        const retryBtn = document.createElement('button');
+        retryBtn.type = 'button';
+        retryBtn.className = 'ai-retry-btn';
+        retryBtn.textContent = 'Try again';
+        retryBtn.setAttribute('aria-label', 'Try sending this message again');
+        retryBtn.addEventListener('click', () => {
+          messageDiv.remove();
+
+          // Drop the failed turn so the retry does not duplicate it.
+          const userBubbles = chatWidget.messagesContainer.querySelectorAll(
+            '.ai-chatbot-user',
+          );
+          const lastUser = userBubbles[userBubbles.length - 1];
+          if (lastUser) lastUser.remove();
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (
+              messages[i].role === 'user' &&
+              messages[i].content === extra.retry
+            ) {
+              messages.splice(i, 1);
+              break;
+            }
+          }
+          // Drop the failed turn itself so the history stays clean.
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'error') {
+              messages.splice(i, 1);
+              break;
+            }
+          }
+
+          if (typeof sendMessageHandler === 'function') {
+            sendMessageHandler(extra.retry);
+          }
+        });
+        contentWrap.appendChild(retryBtn);
+      }
+    }
 
     // Meta bar (timestamps, copy button, status)
     if (role === 'assistant') {

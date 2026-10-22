@@ -2646,6 +2646,10 @@ body.ai-chatbot-body-locked {
     chatWidget.fab.setAttribute('aria-label', 'Close chat assistance');
     localStorage.setItem('ai-chatbot-state', 'open');
 
+    // Generic hook for the host theme: it can hide its own floating widgets
+    // (e.g. a WhatsApp bubble) while the chat is open, so they never overlap.
+    document.body.classList.add('ai-chatbot-open');
+
     // Prevent body scroll on mobile
     if (window.innerWidth <= 640) {
       lockBodyScroll();
@@ -2672,6 +2676,7 @@ body.ai-chatbot-body-locked {
       chatWidget.fab.setAttribute('aria-expanded', 'false');
       chatWidget.fab.setAttribute('aria-label', 'Open chat assistance');
       localStorage.setItem('ai-chatbot-state', 'closed');
+      document.body.classList.remove('ai-chatbot-open');
       unlockBodyScroll();
     } else {
       openWidget();
@@ -2721,11 +2726,11 @@ body.ai-chatbot-body-locked {
       if (window.AIChatbot) {
         AIChatbot.init({
           apiUrl: "https://shopify-chatbot-seven.vercel.app",
-          title: "Flexifit Outerwear",
-          subtitle: "Online • Shopping & Support",
-          placeholder: "Ask about products…",
-          position: "bottom-left",
-          theme: "light",
+          title: "Flexifit Concierge",
+          subtitle: "Outerwear & Fit Advisor • Online",
+          placeholder: "Ask about jackets, sizing, COD or your order…",
+          position: "bottom-right",
+          theme: "dark",
           strategyType: "ecommerce",
           enableTeaser: true,
           teaserMessage: "Hello! Need help with products or tracking your order?"

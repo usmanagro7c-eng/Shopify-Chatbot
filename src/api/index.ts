@@ -13,8 +13,22 @@ if (existsSync(".env.local")) {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
+import {
+	buildSearchTerm,
+	classifyIntent,
+	getCatalogTokens,
+	isBrowseRequest,
+	repairSearchTerm,
+	wantsSizeInfo,
+} from "../bot/product-intent.js";
 import { getAIResponse, getRateLimitStatus } from "../integrations/openai.js";
-import { getOrderByNumber, getShopInfo, searchProducts } from "../integrations/shopify.js";
+import type { ShopInfo, ShopifyProduct } from "../integrations/shopify.js";
+import {
+	checkShopifyHealth,
+	getOrderByNumber,
+	getShopInfo,
+	searchProducts,
+} from "../integrations/shopify.js";
 import { formatContext, retrieveRelevant } from "../knowledge/retrieve.js";
 import { StrategyFactory } from "../strategies/factory/StrategyFactory.js";
 import type { StrategyType } from "../types/strategy.types.js";
@@ -40,10 +54,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Enable CORS for store website, local development, and custom domains
-const allowedOrigins = [
-	"http://localhost:3000",
-	"http://localhost:3001",
-];
+const allowedOrigins = ["http://localhost:3000", "http://localhost:3001"];
 
 app.use((req, res, next) => {
 	const origin = req.headers.origin;
@@ -64,7 +75,10 @@ app.use((req, res, next) => {
 	}
 
 	res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-	res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, ngrok-skip-browser-warning");
+	res.header(
+		"Access-Control-Allow-Headers",
+		"Content-Type, Authorization, ngrok-skip-browser-warning",
+	);
 	res.header("Access-Control-Allow-Credentials", "true");
 
 	// Handle preflight requests
@@ -100,8 +114,15 @@ app.get("/", (_req, res) => {
 // POST /api/chat - Get AI response
 app.post("/api/chat", async (req, res) => {
 	try {
-		const { message, conversationHistory, strategyType, sessionId, userId, storeInfo, products: clientProducts } =
-			req.body;
+		const {
+			message,
+			conversationHistory,
+			strategyType,
+			sessionId,
+			userId,
+			storeInfo,
+			products: clientProducts,
+		} = req.body;
 
 		if (!message) {
 			res.status(400).json({ error: "Message is required" });
@@ -137,7 +158,13 @@ app.post("/api/chat", async (req, res) => {
 		let systemPrompt = strategy.getSystemPrompt();
 		let contextInfo = "";
 		// Structured products returned alongside the AI text (for widget image cards).
-		let productCards: { title: string; price: string; currency: string; url?: string; image?: string }[] = [];
+		let productCards: {
+			title: string;
+			price: string;
+			currency: string;
+			url?: string;
+			image?: string;
+		}[] = [];
 
 		// For portfolio strategy, do semantic retrieval over the RAG index
 		// (built at deploy time from the portfolio snapshot).
@@ -162,144 +189,227 @@ app.post("/api/chat", async (req, res) => {
 
 		// For ecommerce strategy, retrieve product data and store context
 		if (strategy.getType() === "ecommerce") {
+			// Hoisted so the order-lookup block below can use the store currency
+			// instead of assuming USD.
+			let shopInfo: ShopInfo | null = null;
+			// Hoisted for the same reason — the order lookup runs after the
+			// catalog try/catch below.
+			const orderNumberMatch = message.match(
+				/\border\s*#?\s*(\d{3,})\b|(?:^|[^A-Za-z0-9])#(\d{3,})\b/i,
+			);
+			const orderNumber = orderNumberMatch?.[1] || orderNumberMatch?.[2];
 			try {
 				// 1. Fetch shop info if available
-				const shopInfo = storeInfo || await getShopInfo();
+				shopInfo = storeInfo || (await getShopInfo());
 				if (shopInfo) {
+					// Real contact details so the assistant can point the customer
+					// somewhere useful when a question is outside the data it has.
+					const contact = [
+						shopInfo.email ? `- Contact Email: ${shopInfo.email}` : "",
+						shopInfo.phone
+							? `- Contact Phone / WhatsApp: ${shopInfo.phone}`
+							: "",
+					]
+						.filter(Boolean)
+						.join("\n");
+
 					contextInfo += `\n\nSTORE INFORMATION:
 - Store Name: ${shopInfo.name}
 - Website: https://${shopInfo.domain}
 - Currency: ${shopInfo.currency} (${shopInfo.moneyFormat || ""})
-${shopInfo.country ? `- Country: ${shopInfo.country}` : ""}`;
+${shopInfo.country ? `- Country: ${shopInfo.country}` : ""}${contact ? `\n${contact}` : ""}`;
 				}
 
-				// 2. Check if message is an order inquiry or product inquiry
-				const isOrderInquiry =
-					/\border\s*#?\s*(\d{3,})\b|(?:^|[^A-Za-z0-9])#(\d{3,})\b/i.test(
-						message,
-					);
+				// 2. Work out what the customer is actually asking about.
+				//    Running a catalog search for "Assalam-o-Alaikum" wasted a
+				//    Shopify call and pushed product cards at the customer.
+				const intent = classifyIntent(message);
 
-				if (!isOrderInquiry) {
-					const messageText = message.toLowerCase();
+				console.log(
+					`[Chat API] Intent: ${intent}${orderNumber ? ` (order #${orderNumber})` : ""}`,
+				);
 
-					// Detect broad/general catalog questions or store inquiries
-					const isGeneralInquiry =
-						/what (products|items|jackets|puffer|goods|clothes|outerwear)|what do you (have|sell|offer)|show (me )?(products|items|catalog|collection|art)|all products|browse|catalog|kya (products|items|cheezain|hai|hain)|store|products\b|items\b|collection|available/i.test(
-							messageText,
-						) ||
-						messageText.includes("ya mera store hai") ||
-						messageText.includes("according reply") ||
-						messageText.includes("kya hai") ||
-						messageText.includes("kya mil") ||
-						messageText.includes("list");
-
-					let searchTerm = "";
-
-					if (!isGeneralInquiry) {
-						// Clean search term from user message: remove punctuation & common stop words
-						const cleaned = message
-							.replace(/[^\w\s-]/g, " ")
-							.split(/\s+/)
-							.filter(
-								(w: string) =>
-									w.length > 2 &&
-									![
-										"what",
-										"when",
-										"where",
-										"which",
-										"who",
-										"whom",
-										"whose",
-										"why",
-										"how",
-										"can",
-										"you",
-										"tell",
-										"show",
-										"give",
-										"find",
-										"search",
-										"look",
-										"for",
-										"the",
-										"and",
-										"about",
-										"have",
-										"any",
-										"some",
-										"kya",
-										"hai",
-										"hain",
-										"mujhe",
-										"apne",
-										"aap",
-										"mera",
-										"meri",
-										"store",
-										"please",
-										"much",
-										"cost",
-										"price",
-										"chiye",
-										"chahiye",
-										"reply",
-										"karo",
-										"kro",
-										"according",
-									].includes(w.toLowerCase()),
-							)
-							.join(" ");
-
-						searchTerm = cleaned;
-					}
+				if (intent === "product") {
+					const browseRequest = isBrowseRequest(message);
+					const rawTerm = browseRequest ? "" : buildSearchTerm(message);
 
 					console.log(
-						`[Chat API] Searching Shopify products with query: "${searchTerm || "(featured/catalog)"}"`,
+						`[Chat API] Searching Shopify products with query: "${rawTerm || "(featured/catalog)"}"`,
 					);
 
-					let products = (clientProducts && Array.isArray(clientProducts) && clientProducts.length > 0) ? clientProducts : await searchProducts(searchTerm, 8);
+					let products: ShopifyProduct[] = [];
+					let matchedSearch = false;
+					// The term actually used for searching — after typo repair.
+					let effectiveTerm = rawTerm;
 
-					// If specific search yielded 0 results and we had a search term, fallback to featured products
-					if ((!products || products.length === 0) && searchTerm) {
-						console.log(
-							`[Chat API] No exact match for "${searchTerm}", fetching general store products`,
-						);
+					if (
+						clientProducts &&
+						Array.isArray(clientProducts) &&
+						clientProducts.length > 0
+					) {
+						products = clientProducts;
+						matchedSearch = true;
+					} else if (rawTerm) {
+						products = await searchProducts(rawTerm, 8);
+						matchedSearch = products.length > 0;
+
+						// 1) Typo repair: "pufer jaket" -> "puffer jacket".
+						if (!matchedSearch) {
+							const repaired = repairSearchTerm(
+								rawTerm,
+								await getCatalogTokens(),
+							);
+							if (repaired !== rawTerm) {
+								effectiveTerm = repaired;
+								products = await searchProducts(repaired, 8);
+								matchedSearch = products.length > 0;
+								console.log(
+									`[Chat API] Repaired search term "${rawTerm}" -> "${repaired}" (matched=${matchedSearch})`,
+								);
+							}
+						}
+
+						// 2) Word-by-word retry: "difference white black jacket"
+						//    matches nothing as a phrase, but the words do.
+						if (!matchedSearch) {
+							const words = effectiveTerm
+								.split(/\s+/)
+								.filter((w) => w.length > 3);
+							for (const word of words.slice(0, 3)) {
+								const partial = await searchProducts(word, 8);
+								if (partial.length > 0) {
+									products = partial;
+									matchedSearch = true;
+									console.log(
+										`[Chat API] No match for "${rawTerm}", matched on "${word}"`,
+									);
+									break;
+								}
+							}
+						}
+					} else {
+						// Browse request: the catalog itself is the answer.
 						products = await searchProducts("", 8);
+						matchedSearch = true;
 					}
 
-					productCards = (products || [])
-						.filter((p) => p.url)
-						.map((p) => ({
-							title: p.title,
-							price: p.price,
-							currency: p.currency || shopInfo?.currency || "PKR",
-							url: p.url,
-							image: p.image,
-						}));
+					// Product cards only make sense when something actually
+					// matched (or the customer asked to browse). A delivery
+					// question must never push four jackets at the customer.
+					productCards = matchedSearch
+						? (products || [])
+								.filter((p) => p.url)
+								.map((p) => ({
+									title: p.title,
+									price: p.price,
+									currency: p.currency || shopInfo?.currency || "PKR",
+									url: p.url,
+									image: p.image,
+								}))
+						: [];
 
-					if (products && products.length > 0) {
-						contextInfo += `\n\nAVAILABLE PRODUCTS (from ${shopInfo?.name || "Shopify Store"}):\n${products
-							.map(
-								(p) =>
-									`- ${p.title}: ${p.currency || shopInfo?.currency || "PKR"} ${p.price}${p.url ? ` | Product Link: ${p.url}` : ""}${p.description ? ` | Info: ${p.description.substring(0, 100)}` : ""}`,
-							)
-							.join(
-								"\n",
-							)}\n\nIMPORTANT INSTRUCTIONS:
+					// A size question needs the whole catalog, because the
+					// answer (M, L, XL, 2XL) lives in the product variants.
+					let isSizingQuestion = false;
+					if (!matchedSearch && wantsSizeInfo(message)) {
+						const catalog = await searchProducts("", 8);
+						if (catalog.length > 0) {
+							products = catalog;
+							matchedSearch = true;
+							isSizingQuestion = true;
+							productCards = catalog
+								.filter((p) => p.url)
+								.map((p) => ({
+									title: p.title,
+									price: p.price,
+									currency: p.currency || shopInfo?.currency || "PKR",
+									url: p.url,
+									image: p.image,
+								}));
+							console.log(
+								`[Chat API] Size question — injected full catalog with variants`,
+							);
+						}
+					}
+
+					const productLines = (products || [])
+						.map((p) => {
+							const sizes = (p.variants || [])
+								.map((v) => v.title)
+								.filter((t) => t && t.toLowerCase() !== "default title")
+								.join(", ");
+							return `- ${p.title}: ${p.currency || shopInfo?.currency || "PKR"} ${p.price}${p.url ? ` | Product Link: ${p.url}` : ""}${sizes ? ` | Available Sizes: ${sizes}` : ""}${p.description ? ` | Info: ${p.description.substring(0, 100)}` : ""}`;
+						})
+						.join("\n");
+
+					if (matchedSearch && products && products.length > 0) {
+						contextInfo += `\n\nAVAILABLE PRODUCTS (from ${shopInfo?.name || "Shopify Store"}):\n${productLines}\n\nIMPORTANT INSTRUCTIONS:
 - Answer the customer's question directly using ONLY the real products from the list above.
+- This list is the complete set of products you have. Do not mention any product, price, variant or link that is not in it.
+${isSizingQuestion ? '- The customer asked about sizing. Answer with the "Available Sizes" listed for each product. Never invent a size range.\n' : ""}- Mention only the products listed above, using their exact names. NEVER invent a product, a product type, a category, a brand, a price or a link — not even as a passing example.
 - Mention prices in ${shopInfo?.currency || "PKR"} (e.g. Rs. ${shopInfo?.moneyFormat || ""}).
 - Provide a clickable product URL ONLY if a "Product Link" is listed for that product in the list above. NEVER invent, guess, or construct product URLs yourself, and prefer mentioning products by name/title when they have no listed link.
-- If the user talks to you in Urdu or Roman Urdu (e.g., "ya mera store hai", "kya products hain"), reply naturally in Urdu or Roman Urdu / English according to their request.`;
+- ALWAYS reply in clear, natural English — even if the customer writes in Roman Urdu or Urdu. You may understand their input in Roman Urdu, but your answer must be in English.`;
 
 						console.log(
 							`[Chat API] Injected ${products.length} products into context`,
 						);
+					} else {
+						// Nothing matched. Show the full catalog as context, but
+						// tell the model it is not a match — otherwise it will
+						// happily present an unrelated product as the answer
+						// (and, worse, invent product types that do not exist).
+						contextInfo += `\n\nNO PRODUCT MATCHED the customer's request.
+The catalog below is the FULL store catalog, not a search result.
+${productLines || "(the catalog could not be read)"}
+
+INSTRUCTIONS:
+- If the customer asked for a specific product type that is NOT in the list above, tell them clearly that we do not carry that item.
+- Mention only the products listed above, using their exact names. NEVER invent a product, a product type, a category, a brand, a price or a link — not even as a passing example ("we also sell sports bras", "we have shorts in stock").
+- Do NOT claim that the store sells anything other than what is listed above.
+- ALWAYS reply in clear, natural English.`;
+
+						console.log(
+							`[Chat API] No products matched for "${rawTerm}" — model told not to invent any`,
+						);
 					}
+				} else if (intent === "policy" || intent === "discount") {
+					// The assistant has no data for store policies, so it should
+					// hand the customer the real contact details instead of
+					// guessing at delivery times or charges.
+					contextInfo += `\n\nCUSTOMER QUESTION OUTSIDE PRODUCT DATA:
+The customer asked about store policy (delivery, charges, payment, returns${intent === "discount" ? ", discounts" : ""}).
+- Do NOT list, price, or describe any product.
+- Answer honestly that you do not have that information, and give the customer the contact email and phone from the STORE INFORMATION block if they are listed.
+- ALWAYS reply in clear, natural English.`;
+				} else if (intent === "greeting") {
+					contextInfo += `\n\nCUSTOMER GREETING:
+The customer just greeted you. Reply with a short, friendly greeting in English (for example "Hello! Welcome to ${shopInfo?.name || "our store"}.") and ask what they would like to know about the store's products.
+- Do NOT list or describe any product yet.
+- Reply in English only. Do not mirror a Roman Urdu or Urdu greeting back.
+- ALWAYS reply in clear, natural English.`;
+				} else if (intent === "order" && !orderNumber) {
+					contextInfo += `\n\nORDER TRACKING REQUEST WITHOUT AN ORDER NUMBER:
+- The customer wants to track an order but did not give an order number.
+- Ask them for the order number (it looks like #1234) before doing anything else.
+- Do NOT list or describe any product.
+- ALWAYS reply in clear, natural English.`;
+				} else if (intent === "off_topic") {
+					contextInfo += `\n\nCUSTOMER QUESTION IS UNRELATED TO THE STORE:
+- Politely say that you can only help with the store's products and orders.
+- Do NOT list or describe any product.
+- ALWAYS reply in clear, natural English.`;
 				}
 			} catch (error) {
 				console.error("[Chat API] Shopify search error:", error);
-				// Continue with AI response even if Shopify fails
+				// The catalog could not be read. Previously the request continued
+				// with no product context, which made the model invent products,
+				// prices and URLs. Tell it explicitly that it has no data.
+				contextInfo += `\n\nPRODUCT CATALOG UNAVAILABLE:
+The live Shopify product catalog could not be loaded (the store API returned an error).
+- You have NO product data. Do NOT name, price, describe, or link any product.
+- Tell the customer that the product catalog is temporarily unavailable and ask them to try again in a few minutes, or to contact the store directly.
+- ALWAYS reply in clear, natural English.`;
 			}
 
 			// Order-lookup intent. On Shopify Basic/Starter plans there's no way to
@@ -308,10 +418,6 @@ ${shopInfo.country ? `- Country: ${shopInfo.country}` : ""}`;
 			// dev store — enumeration risk is accepted for demo purposes. If this
 			// ever runs on a real store, upgrade the plan and reintroduce the
 			// email gate that used to live here (see git log).
-			const orderNumberMatch = message.match(
-				/\border\s*#?\s*(\d{3,})\b|(?:^|[^A-Za-z0-9])#(\d{3,})\b/i,
-			);
-			const orderNumber = orderNumberMatch?.[1] || orderNumberMatch?.[2];
 			if (orderNumber) {
 				try {
 					console.log(`[Chat API] Order lookup: #${orderNumber}`);
@@ -320,7 +426,9 @@ ${shopInfo.country ? `- Country: ${shopInfo.country}` : ""}`;
 						const items = order.lineItems
 							.map((li) => `  - ${li.quantity}x ${li.title} (${li.price})`)
 							.join("\n");
-						contextInfo += `\n\nORDER LOOKUP RESULT:\nOrder #${order.orderNumber}\nStatus: ${order.status}\nPlaced: ${order.createdAt}\nTotal: $${order.totalPrice}\nItems:\n${items}\n\nSummarize this for the customer in a friendly, concise way.`;
+						// Use the store's real currency — the order total is not USD.
+						const currency = shopInfo?.currency || "PKR";
+						contextInfo += `\n\nORDER LOOKUP RESULT:\nOrder #${order.orderNumber}\nStatus: ${order.status}\nPlaced: ${order.createdAt}\nTotal: ${currency} ${order.totalPrice}\nItems:\n${items}\n\nSummarize this for the customer in a friendly, concise way, and reply in English.`;
 					} else {
 						contextInfo += `\n\nORDER LOOKUP RESULT: no order found with that number. Ask the customer to double-check the number in their order confirmation email.`;
 					}
@@ -421,10 +529,15 @@ ${shopInfo.country ? `- Country: ${shopInfo.country}` : ""}`;
 });
 
 // GET /api/health - Health check
-app.get("/api/health", (_req, res) => {
+app.get("/api/health", async (_req, res) => {
+	const shopify = await checkShopifyHealth();
+
 	res.json({
-		status: "ok",
-		message: "AI Chatbot API is running",
+		status: shopify.reachable ? "ok" : "degraded",
+		message: shopify.reachable
+			? "AI Chatbot API is running and the Shopify catalog is reachable."
+			: "AI Chatbot API is running, but the Shopify catalog is NOT reachable — the assistant cannot read real products and will tell customers so instead of guessing.",
+		shopify,
 		timestamp: new Date().toISOString(),
 	});
 });

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 logs/
+qa-report.json
 .env
 .env.local
 .env*.local

@@ -34,13 +34,14 @@ const embed = {
 	// deployed backend — using window.location.origin would call the store
 	// domain and fail.
 	apiUrl: "https://shopify-chatbot-seven.vercel.app",
-	title: "Flexifit Outerwear",
-	subtitle: "Online • Shopping & Support",
-	placeholder: "Ask about products…",
-	// The store already has a WhatsApp button in the bottom-right corner,
-	// so the chat widget is docked bottom-left to avoid overlapping it.
-	position: "bottom-left",
-	theme: "light",
+	title: "Flexifit Concierge",
+	subtitle: "Outerwear & Fit Advisor • Online",
+	placeholder: "Ask about jackets, sizing, COD or your order…",
+	// The theme's WhatsApp bubble sits at bottom:96px/right:24px, i.e. just
+	// above this widget's launcher. The widget adds `body.ai-chatbot-open`
+	// while open, and the theme hides the WhatsApp bubble for that class.
+	position: "bottom-right",
+	theme: "dark",
 	strategyType: "ecommerce",
 	enableTeaser: true,
 	teaserMessage: "Hello! Need help with products or tracking your order?",
